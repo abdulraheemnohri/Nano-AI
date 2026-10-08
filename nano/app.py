@@ -2,7 +2,7 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 from fastapi import FastAPI,HTTPException,UploadFile,File
 from fastapi.responses import HTMLResponse,FileResponse
-from fastapi.background import BackgroundTask
+from starlette.background import BackgroundTask
 from pydantic import BaseModel
 from . import config
 from .db import init_db,rows,run
