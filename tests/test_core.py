@@ -103,3 +103,28 @@ def test_readiness_endpoint_reports_unavailable_model(tmp_path,monkeypatch):
         r=client.get('/api/ready')
         assert r.status_code==503
         assert r.json()['ready'] is False
+
+
+def test_learning_duplicate_and_memory_search_special_chars(tmp_path,monkeypatch):
+    import nano.config as cfg
+    db=tmp_path/'memory.sqlite3'; monkeypatch.setattr(cfg,'DB_PATH',db)
+    import nano.db as dbm; monkeypatch.setattr(dbm,'DB_PATH',db)
+    init_db()
+    from nano.learning import learn_from_text
+    from nano.memory import search
+    first=learn_from_text('Remember that 50%_ready is my preferred test value.')
+    second=learn_from_text('Remember that 50%_ready is my preferred test value.')
+    assert first and second and first[0]['id']==second[0]['id']
+    assert search('50%_ready')
+
+
+def test_skill_reject_lifecycle(tmp_path,monkeypatch):
+    import nano.config as cfg
+    db=tmp_path/'reject.sqlite3'; monkeypatch.setattr(cfg,'DB_PATH',db)
+    import nano.db as dbm; monkeypatch.setattr(dbm,'DB_PATH',db)
+    from nano.skills import seed, propose, proposals, reject
+    init_db(); seed()
+    pid=propose('reject-me','Reject me','Do not enable this.')
+    assert any(x['id']==pid for x in proposals())
+    reject(pid)
+    assert not any(x['id']==pid for x in proposals())
