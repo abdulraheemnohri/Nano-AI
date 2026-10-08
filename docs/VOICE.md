@@ -1,42 +1,25 @@
-# Voice installation
+# Nano AI Voice
 
-Nano voice is local/offline: **Vosk** performs speech-to-text and **Piper** performs text-to-speech.
+Nano AI voice is local/offline: Microphone -> mono 16-bit WAV -> Vosk STT -> Qwen3 1.7B -> Piper TTS -> speaker.
 
-## 1. Python voice dependencies
+## Install
 
-Linux/Windows:
-```bash
-python -m pip install -e ".[voice]"
-```
+`python -m pip install -r requirements-voice.txt`
 
-## 2. Vosk
+## Vosk
 
-Download a Vosk model from the official Vosk model releases and extract it locally, for example:
+Extract a local Vosk speech model under `models/vosk/` and set `NANO_STT_MODEL=models/vosk`. Input must be mono, 16-bit PCM WAV.
 
-```
-models/vosk/
-```
+## Piper
 
-Then set:
-```
-NANO_STT_MODEL=models/vosk
-```
+Install Piper locally or use `piper-tts`. Put a local `.onnx` voice under `models/piper/` and set `NANO_PIPER_COMMAND=piper` and `NANO_PIPER_VOICE=models/piper/<voice>.onnx`.
 
-The API accepts **mono, 16-bit PCM WAV**. This avoids requiring ffmpeg or a cloud transcription service.
+## API
 
-## 3. Piper
+`POST /api/voice/stt` accepts a WAV upload and returns `{\"text\":\"...\"}`.
 
-Install the Piper executable for your platform and download a compatible local voice model. Set:
+`GET /api/voice/tts?text=...` returns a WAV audio response.
 
-```
-NANO_PIPER_COMMAND=piper
-NANO_PIPER_VOICE=models/piper/en_US-lessac-medium.onnx
-```
+## Privacy
 
-If Piper is not on PATH, set NANO_PIPER_COMMAND to its full local executable path.
-
-## 4. Voice flow
-
-WAV microphone/file -> Vosk -> text -> Qwen3 1.7B -> response -> Piper -> WAV speaker playback.
-
-No audio is uploaded to a remote service. Nano does not use browser speech recognition because that can depend on a remote browser provider.
+No cloud STT/TTS is required and Nano does not use browser SpeechRecognition. Audio remains on the machine running Nano.
