@@ -1,7 +1,7 @@
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from fastapi import FastAPI,HTTPException,UploadFile,File
-from fastapi.responses import HTMLResponse,FileResponse
+from fastapi.responses import HTMLResponse,FileResponse,JSONResponse
 from starlette.background import BackgroundTask
 from pydantic import BaseModel
 from . import config
@@ -72,6 +72,11 @@ def skill_enabled(name:str,enabled:bool=True):
 
 @app.get("/api/knowledge")
 def knowledge(): return recent(100)
+
+@app.delete("/api/knowledge")
+def knowledge_clear():
+    run("UPDATE memories SET status='deleted',updated_at=CURRENT_TIMESTAMP WHERE kind='knowledge' AND status='active'")
+    return {"ok":True}
 @app.post("/api/knowledge")
 def knowledge_add(x:KnowledgeIn):
     if not x.text.strip() or len(x.text)>500000: raise HTTPException(400,"Invalid text")
@@ -86,6 +91,19 @@ def setting(x:SettingIn):
     return public()
 @app.post("/api/settings/reset")
 def settings_reset(): return reset()
+
+@app.get("/api/export")
+def export_data():
+    return JSONResponse({
+        "version":"0.5.0",
+        "conversations": rows("SELECT * FROM conversations ORDER BY id"),
+        "messages": rows("SELECT * FROM messages ORDER BY id"),
+        "memories": rows("SELECT * FROM memories ORDER BY id"),
+        "learning_events": rows("SELECT * FROM learning_events ORDER BY id"),
+        "skills": rows("SELECT * FROM skills ORDER BY id"),
+        "skill_proposals": rows("SELECT * FROM skill_proposals ORDER BY id"),
+        "settings": public(),
+    })
 
 @app.get("/api/model")
 def model(): return info()
