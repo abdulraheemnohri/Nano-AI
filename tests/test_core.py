@@ -58,3 +58,35 @@ def test_skill_proposal_lifecycle(tmp_path,monkeypatch):
     assert proposals()
     assert accept(pid)
     assert any(x['name']=='test-skill' for x in list_all())
+
+
+def test_data_export_and_knowledge_cleanup(tmp_path,monkeypatch):
+    import nano.config as cfg
+    db=tmp_path/'export.sqlite3'; monkeypatch.setattr(cfg,'DB_PATH',db)
+    import nano.db as dbm; monkeypatch.setattr(dbm,'DB_PATH',db)
+    from fastapi.testclient import TestClient
+    from nano.app import app
+    with TestClient(app) as client:
+        assert client.post('/api/knowledge',json={'text':'This is local knowledge for Nano AI testing.','source':'test'}).status_code==200
+        exported=client.get('/api/export')
+        assert exported.status_code==200
+        assert exported.json()['version']=='0.5.0'
+        assert exported.json()['memories']
+        assert client.delete('/api/knowledge').json()['ok'] is True
+        assert client.get('/api/knowledge').json()==[]
+
+
+def test_conversation_delete_preserves_fallback(tmp_path,monkeypatch):
+    import nano.config as cfg
+    db=tmp_path/'delete.sqlite3'; monkeypatch.setattr(cfg,'DB_PATH',db)
+    import nano.db as dbm; monkeypatch.setattr(dbm,'DB_PATH',db)
+    from fastapi.testclient import TestClient
+    from nano.app import app
+    with TestClient(app) as client:
+        conversations=client.get('/api/conversations').json()
+        assert len(conversations)==1
+        cid=conversations[0]['id']
+        assert client.delete(f'/api/conversations/{cid}').json()['ok'] is True
+        remaining=client.get('/api/conversations').json()
+        assert len(remaining)==1
+        assert client.get(f"/api/conversations/{remaining[0]['id']}/messages").status_code==200
