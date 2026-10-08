@@ -35,3 +35,26 @@ def test_voice_status_api(tmp_path,monkeypatch):
         assert r.status_code==200
         assert r.json()['stt']['offline'] is True
         assert r.json()['tts']['offline'] is True
+
+
+def test_settings_validation_and_runtime_values(tmp_path,monkeypatch):
+    import nano.config as cfg
+    db=tmp_path/'settings.sqlite3'; monkeypatch.setattr(cfg,'DB_PATH',db)
+    import nano.db as dbm; monkeypatch.setattr(dbm,'DB_PATH',db)
+    from nano.settings import set_value, public
+    init_db()
+    set_value('temperature','0.4')
+    set_value('max_tokens','512')
+    assert public()['temperature']=='0.4'
+    assert public()['max_tokens']=='512'
+
+def test_skill_proposal_lifecycle(tmp_path,monkeypatch):
+    import nano.config as cfg
+    db=tmp_path/'skills.sqlite3'; monkeypatch.setattr(cfg,'DB_PATH',db)
+    import nano.db as dbm; monkeypatch.setattr(dbm,'DB_PATH',db)
+    from nano.skills import seed, propose, proposals, accept, list_all
+    init_db(); seed()
+    pid=propose('test-skill','Test skill','Be concise.')
+    assert proposals()
+    assert accept(pid)
+    assert any(x['name']=='test-skill' for x in list_all())
