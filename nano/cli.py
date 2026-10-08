@@ -1,28 +1,24 @@
-import argparse,subprocess,sys,urllib.request
-from pathlib import Path
-from .config import MODEL_DIR,HOST,PORT,LLAMA_MODEL
+import argparse,subprocess,shutil
+from . import config
 from .db import init_db
-
-def download_model():
- url='https://huggingface.co/ggml-org/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q4_K_M.gguf?download=true'
- dst=MODEL_DIR/LLAMA_MODEL
- if dst.exists(): print(dst); return
- print('Downloading Qwen3 1.7B Q4_K_M...')
- urllib.request.urlretrieve(url,dst); print(dst)
+from .model_manager import download,info,default_model_path
+from .runtime import status
 
 def main():
- p=argparse.ArgumentParser(prog='nano-ai'); sub=p.add_subparsers(dest='cmd')
- sub.add_parser('init'); sub.add_parser('model')
- q=sub.add_parser('llama'); q.add_argument('--binary',default='llama-server')
- sub.add_parser('web')
+ p=argparse.ArgumentParser(prog="nano-ai")
+ s=p.add_subparsers(dest="cmd")
+ for n in ("init","status","model","download-model"):s.add_parser(n)
+ w=s.add_parser("web");w.add_argument("--host",default=config.HOST);w.add_argument("--port",type=int,default=config.PORT)
+ l=s.add_parser("llama");l.add_argument("--port",type=int,default=8080)
  a=p.parse_args()
- if a.cmd=='init': init_db(); print('Nano AI initialized')
- elif a.cmd=='model': download_model()
- elif a.cmd=='llama':
-  model=MODEL_DIR/LLAMA_MODEL
-  if not model.exists(): download_model()
-  subprocess.run([a.binary,'-m',str(model),'--host','127.0.0.1','--port','8080','-c','4096'])
- elif a.cmd=='web':
-  subprocess.run([sys.executable,'-m','uvicorn','nano.app:app','--host',HOST,'--port',str(PORT)])
- else: p.print_help()
-if __name__=='__main__': main()
+ if a.cmd=="init":init_db();print("Nano initialized")
+ elif a.cmd=="status":print(status())
+ elif a.cmd=="model":print(info())
+ elif a.cmd=="download-model":print(download())
+ elif a.cmd=="web":
+  import uvicorn;uvicorn.run("nano.app:app",host=a.host,port=a.port)
+ elif a.cmd=="llama":
+  b=shutil.which("llama-server") or shutil.which("llama-server.exe")
+  if not b:raise SystemExit("llama-server was not found on PATH")
+  subprocess.run([b,"-m",default_model_path(),"--host","127.0.0.1","--port",str(a.port),"--ctx-size",str(config.MAX_CONTEXT)],check=True)
+ else:p.print_help()
