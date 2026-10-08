@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install --upgrade pip
-pip install -r requirements.txt
-python -m nano.cli init
-printf '\nNano AI ready. Start local llama.cpp server with: python -m nano.cli llama\nThen in another terminal: python -m nano.cli web\n'
+pip install -e .
+python -m pip install -U litert-lm
+nano-ai init
+printf '\nNano AI ready.\nImport: nano-ai download-model\nTerminal 1: nano-ai litert-lm\nTerminal 2: nano-ai web\n'
