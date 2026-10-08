@@ -1,39 +1,51 @@
 import json
 import urllib.error
 import urllib.request
-from .config import LITERT_URL, LITERT_MODEL, TEMPERATURE, MAX_CONTEXT
+from . import config
+from .settings import bool_value, float_value, int_value
 
 SYSTEM = """You are Nano AI, a small local assistant powered by Qwen3 1.7B through the LiteRT-LM CLI runtime. You are offline-first and privacy-first. Do not claim to browse, execute tools, control devices, or retrain model weights. Use supplied memories as context, be honest about uncertainty, and answer concisely unless detail is requested."""
 
 def health():
     try:
-        with urllib.request.urlopen(LITERT_URL.rstrip("/") + "/v1/models", timeout=2) as response:
+        with urllib.request.urlopen(config.LITERT_URL.rstrip("/") + "/v1/models", timeout=2) as response:
             return response.status == 200
     except Exception:
         return False
+
+def _settings():
+    return {
+        "temperature": float_value("temperature", config.TEMPERATURE),
+        "max_tokens": int_value("max_tokens", max(256, min(2048, config.MAX_CONTEXT // 2))),
+        "max_history": int_value("max_history", 12),
+        "language": __import__("nano.settings", fromlist=["get_all"]).get_all().get("language", "auto"),
+    }
 
 def chat(messages, user_text=None, context=""):
     history = list(messages)
     if user_text is not None:
         history.append({"role": "user", "content": user_text})
+    s = _settings()
     system = SYSTEM
+    if s["language"] != "auto":
+        system += f"\nPreferred response language: {s['language']}."
     if context:
         system += "\n\nUse this local context when relevant:\n" + context
     payload = {
-        "model": LITERT_MODEL,
-        "messages": [{"role": "system", "content": system}] + history[-12:],
-        "temperature": TEMPERATURE,
+        "model": config.LITERT_MODEL,
+        "messages": [{"role": "system", "content": system}] + history[-s["max_history"]:],
+        "temperature": s["temperature"],
         "stream": False,
-        "max_tokens": max(256, min(2048, MAX_CONTEXT // 2)),
+        "max_tokens": max(1, min(4096, s["max_tokens"])),
     }
     request = urllib.request.Request(
-        LITERT_URL.rstrip("/") + "/v1/chat/completions",
+        config.LITERT_URL.rstrip("/") + "/v1/chat/completions",
         data=json.dumps(payload).encode("utf-8"),
         headers={"Content-Type": "application/json"},
         method="POST",
     )
     try:
-        with urllib.request.urlopen(request, timeout=180) as response:
+        with urllib.request.urlopen(request, timeout=config.LITERT_TIMEOUT) as response:
             data = json.loads(response.read().decode("utf-8"))
             return data["choices"][0]["message"]["content"].strip()
     except urllib.error.HTTPError as exc:
