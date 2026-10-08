@@ -1,0 +1,17 @@
+[build-system]
+requires=["setuptools>=68"]
+build-backend="setuptools.build_meta"
+[project]
+name="nano-ai"
+version="0.2.0"
+description="Nano AI local Qwen3 1.7B assistant"
+readme="README.md"
+requires-python=">=3.10"
+license={text="Apache-2.0"}
+dependencies=["fastapi>=0.115","uvicorn[standard]>=0.30","python-multipart>=0.0.9"]
+[project.optional-dependencies]
+voice=["vosk>=0.3.45","sounddevice>=0.5"]
+[project.scripts]
+nano-ai="nano.cli:main"
+[tool.pytest.ini_options]
+testpaths=["tests"]
