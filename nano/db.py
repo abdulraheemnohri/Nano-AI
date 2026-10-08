@@ -10,13 +10,19 @@ CREATE TABLE IF NOT EXISTS learning_events(id INTEGER PRIMARY KEY AUTOINCREMENT,
 CREATE TABLE IF NOT EXISTS skills(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT UNIQUE NOT NULL,description TEXT NOT NULL,version INTEGER DEFAULT 1,prompt TEXT NOT NULL,enabled INTEGER DEFAULT 1,created_at TEXT DEFAULT CURRENT_TIMESTAMP,updated_at TEXT DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE IF NOT EXISTS skill_proposals(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT NOT NULL,description TEXT NOT NULL,prompt TEXT NOT NULL,status TEXT DEFAULT 'pending',created_at TEXT DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY,value TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id,id);
+CREATE INDEX IF NOT EXISTS idx_memories_active ON memories(status,confidence,updated_at);
+CREATE INDEX IF NOT EXISTS idx_learning_events_created ON learning_events(id);
+CREATE INDEX IF NOT EXISTS idx_skills_enabled ON skills(enabled,name);
 """
 
 @contextmanager
 def connect():
-    connection = sqlite3.connect(DB_PATH)
+    connection = sqlite3.connect(DB_PATH, timeout=10)
     connection.row_factory = sqlite3.Row
     connection.execute("PRAGMA foreign_keys=ON")
+        connection.execute("PRAGMA journal_mode=WAL")
+        connection.execute("PRAGMA busy_timeout=10000")
     try:
         yield connection
         connection.commit()
