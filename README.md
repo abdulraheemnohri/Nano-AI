@@ -1,152 +1,94 @@
 # Nano AI
 
-Nano AI is a lightweight, privacy-first local talking assistant built around **Qwen3 1.7B**.
+Nano AI is a lightweight, privacy-first local talking assistant built around Qwen3 1.7B and the LiteRT-LM CLI.
 
-## Quick installation
+## Runtime
 
-### Linux
+Nano uses the official LiteRT-LM CLI as its inference runtime. LiteRT-LM provides an OpenAI-compatible local server on port 9379, so Nano sends chat requests to /v1/chat/completions.
 
-````
-git clone https://github.com/abdulraheemnohri/Nano-AI.git
-cd Nano-AI
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-pip install -e .
-nano-ai init
-nano-ai download-model
-nano-ai llama
-````
+Selected Qwen3 1.7B artifact: Qwen3-1.7B_dynamic_wi4b32_afp32.litertlm, about 932 MB, 4096-token context variant.
 
-Open a second terminal:
+## Linux / macOS
 
-````
-cd Nano-AI
-source .venv/bin/activate
-nano-ai web
-````
+    git clone https://github.com/abdulraheemnohri/Nano-AI.git
+    cd Nano-AI
+    python3 -m venv .venv
+    source .venv/bin/activate
+    python -m pip install --upgrade pip
+    pip install -e .
+    pip install -U litert-lm
+    nano-ai init
+    nano-ai download-model
 
-Open **http://127.0.0.1:8000**.
+Start LiteRT-LM:
 
-### Windows PowerShell
+    nano-ai litert-lm
 
-````
-git clone https://github.com/abdulraheemnohri/Nano-AI.git
-cd Nano-AI
-py -3 -m venv .venv
-.\\.venv\\Scripts\\Activate.ps1
-python -m pip install --upgrade pip
-pip install -e .
-nano-ai init
-nano-ai download-model
-nano-ai llama
-````
+Or directly:
 
-In another PowerShell window:
+    litert-lm serve --host 127.0.0.1 --port 9379
 
-````
-cd Nano-AI
-.\\.venv\\Scripts\\Activate.ps1
-nano-ai web
-````
+Start Nano Web UI in another terminal:
 
-## Required runtime
+    nano-ai web
 
-Nano requires Python 3.10+ and a llama.cpp installation containing **llama-server**. Verify with `llama-server --help` (Windows: `llama-server.exe --help`).
+Open http://127.0.0.1:8000.
 
-Default model: **Qwen3-1.7B-Q4_K_M.gguf**. The model is kept locally under `models/`.
+## Windows PowerShell
 
-## Voice setup
+    git clone https://github.com/abdulraheemnohri/Nano-AI.git
+    cd Nano-AI
+    py -3 -m venv .venv
+    .\.venv\Scripts\Activate.ps1
+    python -m pip install --upgrade pip
+    pip install -e .
+    pip install -U litert-lm
+    nano-ai init
+    nano-ai download-model
+    nano-ai litert-lm
 
-Voice is optional. Install:
+Then open another PowerShell window, activate the environment and run nano-ai web.
 
-````
-pip install -r requirements-voice.txt
-````
+## LiteRT-LM model
 
-Configure a local Vosk model at `models/vosk/` and set `NANO_STT_MODEL=models/vosk`. Configure Piper with a local executable and ONNX voice:
+Nano's download-model command calls the LiteRT-LM CLI import operation:
 
-Linux:
-````
-export NANO_STT_MODEL=models/vosk
-export NANO_PIPER_COMMAND=piper
-export NANO_PIPER_VOICE=models/piper/<voice>.onnx
-````
+    litert-lm import --from-huggingface-repo=litert-community/Qwen3-1.7B Qwen3-1.7B_dynamic_wi4b32_afp32.litertlm qwen3-1.7b
 
-Windows PowerShell:
-````
-$env:NANO_STT_MODEL="models/vosk"
-$env:NANO_PIPER_COMMAND="piper"
-$env:NANO_PIPER_VOICE="models/piper/<voice>.onnx"
-````
+Then the CLI server loads the local registry:
 
-Restart Nano after changing environment variables. Voice flow: **Microphone → local WAV → Vosk → Qwen3 1.7B → Piper → speaker**. WAV upload is available as a fallback.
+    litert-lm serve --host 127.0.0.1 --port 9379
 
-## Complete UI guide
+Default model ID: qwen3-1.7b.
 
-**Talk:** text chat, conversation switching, new chats, microphone recording, WAV upload and TTS playback.
+## Voice
 
-**Memory:** search durable memories and use **Forget** to remove individual entries.
+Install voice support with requirements-voice.txt. Voice flow is: Microphone -> local WAV -> Vosk STT -> Qwen3 1.7B through LiteRT-LM -> Piper TTS -> speaker.
 
-**Learning:** inspect explicit learning events. Nano does not silently retrain model weights.
+No browser SpeechRecognition or cloud audio processing is required.
 
-**Skills:** enable or disable reusable prompt skills.
+## UI
 
-**Knowledge:** paste local notes/documentation and choose **Import locally** to make them searchable.
-
-**Model:** inspect model/runtime information.
-
-**Settings:** change supported Nano preferences such as language, voice, learning, theme and temperature.
-
-**System:** inspect runtime and voice readiness.
-
-## Learning examples
-
-````
-Remember that I prefer Urdu.
-My name is Abdul.
-I like concise answers.
-Learn that I prefer Roman Urdu.
-````
-
-Learning is intentionally explicit and user-visible. Imported knowledge is stored as local searchable memory.
+Talk supports conversations, microphone recording, WAV upload and TTS playback. Memory supports search and forgetting individual entries. Learning shows explicit learning events. Skills can be enabled or disabled. Knowledge imports local text. Model and System pages expose LiteRT-LM runtime state.
 
 ## CLI
 
-````
-nano-ai --help
-nano-ai init
-nano-ai status
-nano-ai model
-nano-ai download-model
-nano-ai llama
-nano-ai web
-````
+    nano-ai --help
+    nano-ai init
+    nano-ai status
+    nano-ai model
+    nano-ai download-model
+    nano-ai litert-lm
+    nano-ai web
 
 ## Configuration
 
-Important variables: `NANO_HOST`, `NANO_PORT`, `NANO_LLAMA_URL`, `NANO_MODEL_NAME`, `NANO_MAX_CONTEXT`, `NANO_TEMPERATURE`, `NANO_STT_MODEL`, `NANO_PIPER_COMMAND`, `NANO_PIPER_VOICE`.
-
-Default database: `data/nano.sqlite3`.
-
-## Troubleshooting
-
-- **llama-server not found:** install llama.cpp and add its binary directory to PATH.
-- **Model server offline:** run `nano-ai status` and start `nano-ai llama`.
-- **Model missing:** run `nano-ai model` and verify the GGUF exists in `models/`.
-- **Vosk unavailable:** install voice dependencies and set `NANO_STT_MODEL` to the extracted model directory.
-- **Piper unavailable:** configure `NANO_PIPER_COMMAND` and `NANO_PIPER_VOICE`.
-- **Microphone unavailable:** grant browser permission or upload a mono 16-bit PCM WAV.
-- **Port conflict:** use `nano-ai web --port 8001` or `nano-ai llama --port 8081` and update `NANO_LLAMA_URL` accordingly.
+NANO_LITERT_URL defaults to http://127.0.0.1:9379. NANO_LITERT_MODEL defaults to qwen3-1.7b. Other settings include NANO_MODEL_NAME, NANO_MAX_CONTEXT, NANO_TEMPERATURE, NANO_LEARNING_ENABLED, NANO_STT_MODEL, NANO_PIPER_COMMAND and NANO_PIPER_VOICE.
 
 ## Security
 
-Nano is local-first and does not require Firebase or a cloud AI provider. It intentionally has no terminal executor, browser automation, device-control agent or arbitrary external plugin execution. Do not expose the local ports publicly without your own authentication/network controls.
+Nano is local-first with no Firebase, mandatory cloud AI, terminal executor, browser automation, device-control agent or arbitrary plugin execution. Keep local HTTP services bound to localhost unless you add your own authentication and network controls.
 
 ## Tests
 
-````
-python -m pytest
-````
-
-See `docs/INSTALL.md` and `docs/USER_GUIDE.md` for the full guides.
+    python -m pytest
