@@ -1,56 +1,56 @@
 # Nano AI
 
-Nano AI is a privacy-first, local talking assistant built around **Qwen3 1.7B**.
+Nano AI is a lightweight, privacy-first local talking assistant built around Qwen3 1.7B.
 
-## Included
+## System
 
-- Local Qwen3 1.7B chat through a local llama.cpp-compatible HTTP server.
-- Lightweight FastAPI web UI.
-- Persistent SQLite conversations and memory.
-- Explicit self-learning for facts and preferences taught in conversation.
-- Versioned self-skills with proposals and acceptance.
-- Urdu/Roman Urdu, reasoning, writing and summarization skills.
-- Optional offline speech-to-text with Vosk.
-- Optional offline text-to-speech with Piper.
-- Windows and Linux setup scripts and automated tests.
-- No Firebase, no mandatory cloud service, no external agent/tool execution, and no silent model-weight modification.
+Microphone or text -> local STT -> Qwen3 1.7B -> memory/skills context -> response -> optional Piper TTS.
 
-## Architecture
+## Features
 
-Microphone -> STT -> Qwen3 1.7B -> response -> TTS -> speaker
+- Qwen3 1.7B local inference through llama.cpp.
+- FastAPI local web interface.
+- SQLite conversation and memory storage.
+- Explicit learning for facts and preferences.
+- Local knowledge ingestion.
+- Search, forget and clear memory.
+- Versioned prompt skills with enable/disable and proposals.
+- Runtime health and model inventory.
+- Local model manager.
+- Optional offline Vosk STT and Piper TTS.
+- Linux and Windows setup.
+- Automated tests and GitHub Actions.
+- Dark responsive UI with Talk, Memory, Learning, Skills, Knowledge, Model, Settings and System pages.
 
-Learning is lightweight: Nano learns memory, knowledge and reusable skill instructions rather than rewriting model weights.
+## Safety boundary
+
+Nano is intentionally not an agent with external action tools. It does not browse, execute shell commands, control devices, or silently modify neural model weights. Learning means persistent user-visible memory, knowledge and reusable prompt skills.
 
 ## Quick start
 
-1. Install Python 3.10+.
-2. Create a virtual environment and install `requirements.txt`.
-3. Install llama.cpp and make `llama-server` available on PATH.
-4. Run `python -m nano.cli model` to download Qwen3 1.7B Q4_K_M.
-5. Run `python -m nano.cli llama`.
-6. In another terminal run `python -m nano.cli web`.
-7. Open `http://127.0.0.1:8000`.
+Install Python 3.10+ and llama.cpp. Then:
 
-For STT install `requirements-voice.txt` and configure `NANO_STT_MODEL`. For Piper, install Piper locally and set `NANO_PIPER_VOICE`.
+1. pip install -e .
+2. nano-ai init
+3. Place Qwen3-1.7B-Q4_K_M.gguf in models/ or run nano-ai download-model.
+4. nano-ai llama
+5. In another terminal: nano-ai web
+6. Open http://127.0.0.1:8000
 
-## Learning
+Optional voice dependencies are available with the voice extra.
 
-Say `Remember that I prefer Urdu` or `My name is ...`. Nano stores explicit learning candidates in SQLite and supplies active memories to future conversations. Skills are versioned; new skills can be proposed and accepted.
+## Configuration
 
-## Security and privacy
+Use environment variables such as NANO_HOST, NANO_PORT, NANO_LLAMA_URL, NANO_MODEL_NAME, NANO_MAX_CONTEXT, NANO_TEMPERATURE, NANO_STT_MODEL and NANO_PIPER_VOICE. See .env.example.
 
-Nano binds to localhost by default. It does not expose terminal, browser, filesystem-control or arbitrary external-agent tools.
+## Documentation
 
-## Layout
-
-- `nano/app.py` - API and UI
-- `nano/model.py` - local model adapter
-- `nano/db.py` - SQLite storage
-- `nano/learning.py` - learning pipeline
-- `nano/skills.py` - skill registry/evolution
-- `nano/voice.py` - Vosk/Piper adapters
-- `nano/cli.py` - setup/run commands
-- `tests/` - automated tests
+- docs/INSTALL.md
+- docs/USER_GUIDE.md
+- docs/MODEL.md
+- docs/SECURITY.md
+- docs/ARCHITECTURE.md
+- docs/LEARNING.md
 
 ## License
 
