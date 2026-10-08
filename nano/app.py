@@ -36,6 +36,15 @@ def health():
     s=status()
     return {"ok":True,"model_reachable":s["reachable"],"runtime":s,"voice":voice_status()}
 
+@app.get("/api/ready")
+def ready():
+    s=status()
+    ready_ok=bool(s["reachable"])
+    payload={"ready":ready_ok,"model_reachable":s["reachable"],"runtime":s}
+    if not ready_ok:
+        return JSONResponse(payload,status_code=503)
+    return payload
+
 @app.post("/api/chat")
 def chat_api(x:ChatIn):
     if not x.message.strip() or len(x.message)>config.MAX_MESSAGE_CHARS: raise HTTPException(400,"Invalid message")
