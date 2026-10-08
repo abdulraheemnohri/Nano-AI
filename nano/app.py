@@ -2,9 +2,10 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 from fastapi import FastAPI,HTTPException,UploadFile,File
 from fastapi.responses import HTMLResponse,FileResponse
+from fastapi.background import BackgroundTask
 from pydantic import BaseModel
 from . import config
-from .db import init_db,rows
+from .db import init_db,rows,run
 from .core import respond
 from .memory import search,forget,clear
 from .learning import events
@@ -14,15 +15,16 @@ from .settings import public,set_value
 from .runtime import status,installed_models
 from .model_manager import info
 from .web import HTML
-from .voice import transcribe_wav,speak
+from .voice import transcribe_wav,speak,voice_status
 
-app=FastAPI(title="Nano AI",version="0.3.0")
+app=FastAPI(title="Nano AI",version="0.4.0")
 @app.on_event("startup")
 def startup(): init_db(); seed()
 
 class ChatIn(BaseModel): conversation_id:int=1; message:str
 class SettingIn(BaseModel): key:str; value:str
 class KnowledgeIn(BaseModel): text:str; source:str="local"
+class ConversationIn(BaseModel): title:str="New conversation"
 
 @app.get("/",response_class=HTMLResponse)
 def home(): return HTML
@@ -30,7 +32,7 @@ def home(): return HTML
 @app.get("/api/health")
 def health():
     s=status()
-    return {"ok":True,"model_reachable":s["reachable"],"runtime":s}
+    return {"ok":True,"model_reachable":s["reachable"],"runtime":s,"voice":voice_status()}
 
 @app.post("/api/chat")
 def chat_api(x:ChatIn):
@@ -68,38 +70,56 @@ def model(): return info()
 @app.get("/api/models")
 def models(): return installed_models()
 @app.get("/api/system")
-def system(): return {"version":"0.3.0","host":config.HOST,"port":config.PORT,"runtime":status()}
+def system(): return {"version":"0.4.0","host":config.HOST,"port":config.PORT,"runtime":status(),"voice":voice_status()}
+
 @app.get("/api/conversations")
-def conversations(): return rows("SELECT * FROM conversations ORDER BY updated_at DESC")
+def conversations(): return rows("SELECT * FROM conversations ORDER BY updated_at DESC,id DESC")
+@app.post("/api/conversations")
+def conversation_create(x:ConversationIn):
+    title=x.title.strip()[:120] or "New conversation"
+    cid=run("INSERT INTO conversations(title) VALUES(?)",(title,))
+    return {"id":cid,"title":title}
+@app.patch("/api/conversations/{cid}")
+def conversation_rename(cid:int,x:ConversationIn):
+    title=x.title.strip()[:120]
+    if not title: raise HTTPException(400,"Title cannot be empty")
+    if not rows("SELECT id FROM conversations WHERE id=?",(cid,)): raise HTTPException(404,"Conversation not found")
+    run("UPDATE conversations SET title=?,updated_at=CURRENT_TIMESTAMP WHERE id=?",(title,cid))
+    return {"ok":True,"title":title}
+@app.delete("/api/conversations/{cid}")
+def conversation_delete(cid:int):
+    if not rows("SELECT id FROM conversations WHERE id=?",(cid,)): raise HTTPException(404,"Conversation not found")
+    run("DELETE FROM messages WHERE conversation_id=?",(cid,))
+    run("DELETE FROM conversations WHERE id=?",(cid,))
+    if not rows("SELECT id FROM conversations LIMIT 1"):
+        run("INSERT INTO conversations(title) VALUES('Nano AI')")
+    return {"ok":True}
 @app.get("/api/conversations/{cid}/messages")
 def messages(cid:int): return rows("SELECT * FROM messages WHERE conversation_id=? ORDER BY id",(cid,))
+
+@app.get("/api/voice/status")
+def voice_api_status(): return voice_status()
 
 @app.post("/api/voice/stt")
 async def voice_stt(file:UploadFile=File(...)):
     if file.content_type not in {"audio/wav","audio/x-wav","audio/wave","application/octet-stream"}:
         raise HTTPException(415,"Upload a mono 16-bit WAV file.")
-    suffix=".wav"
-    with NamedTemporaryFile(prefix="nano-stt-",suffix=suffix,delete=False) as tmp:
+    with NamedTemporaryFile(prefix="nano-stt-",suffix=".wav",delete=False) as tmp:
         temp=Path(tmp.name)
         data=await file.read()
         if len(data)>20*1024*1024: temp.unlink(missing_ok=True); raise HTTPException(413,"Audio file too large.")
         temp.write_bytes(data)
-    try:
-        return {"text":transcribe_wav(temp)}
-    except (ValueError,RuntimeError) as e:
-        raise HTTPException(422,str(e))
-    finally:
-        temp.unlink(missing_ok=True)
+    try: return {"text":transcribe_wav(temp)}
+    except (ValueError,RuntimeError) as e: raise HTTPException(422,str(e))
+    finally: temp.unlink(missing_ok=True)
 
 @app.get("/api/voice/tts")
 def voice_tts(text:str):
     if not text.strip() or len(text)>12000: raise HTTPException(400,"Invalid TTS text.")
-    with NamedTemporaryFile(prefix="nano-tts-",suffix=".wav",delete=False) as tmp:
-        output=Path(tmp.name)
+    with NamedTemporaryFile(prefix="nano-tts-",suffix=".wav",delete=False) as tmp: output=Path(tmp.name)
     try:
         speak(text,output)
         return FileResponse(output,media_type="audio/wav",filename="nano-response.wav",
-                            background=None)
+                            background=BackgroundTask(output.unlink,missing_ok=True))
     except (ValueError,RuntimeError) as e:
-        output.unlink(missing_ok=True)
-        raise HTTPException(503,str(e))
+        output.unlink(missing_ok=True); raise HTTPException(503,str(e))
