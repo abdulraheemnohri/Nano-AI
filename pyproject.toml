@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nano-ai"
-version = "0.4.1"
+version = "0.5.0"
 description = "Nano AI local Qwen3 1.7B assistant"
 readme = "README.md"
 requires-python = ">=3.10"
