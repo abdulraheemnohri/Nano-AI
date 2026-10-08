@@ -90,3 +90,16 @@ def test_conversation_delete_preserves_fallback(tmp_path,monkeypatch):
         remaining=client.get('/api/conversations').json()
         assert len(remaining)==1
         assert client.get(f"/api/conversations/{remaining[0]['id']}/messages").status_code==200
+
+
+def test_readiness_endpoint_reports_unavailable_model(tmp_path,monkeypatch):
+    import nano.config as cfg
+    db=tmp_path/'ready.sqlite3'; monkeypatch.setattr(cfg,'DB_PATH',db)
+    import nano.db as dbm; monkeypatch.setattr(dbm,'DB_PATH',db)
+    import nano.app as appmod
+    monkeypatch.setattr(appmod, 'status', lambda: {'reachable': False, 'runtime': 'litert-lm'})
+    from fastapi.testclient import TestClient
+    with TestClient(appmod.app) as client:
+        r=client.get('/api/ready')
+        assert r.status_code==503
+        assert r.json()['ready'] is False
