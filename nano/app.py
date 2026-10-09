@@ -1,4 +1,5 @@
 from pathlib import Path
+import sqlite3
 from tempfile import NamedTemporaryFile
 from fastapi import FastAPI,HTTPException,UploadFile,File
 from fastapi.responses import HTMLResponse,FileResponse,JSONResponse
@@ -136,6 +137,33 @@ def setting(x:SettingIn):
     return public()
 @app.post("/api/settings/reset")
 def settings_reset(): return reset()
+
+@app.get("/api/backup")
+def backup_database():
+    """Return a consistent SQLite snapshot without copying a live WAL file."""
+    if not config.DB_PATH.exists():
+        raise HTTPException(404, "Database file does not exist yet.")
+    with NamedTemporaryFile(prefix="nano-backup-", suffix=".sqlite3", delete=False) as tmp:
+        backup_path = Path(tmp.name)
+    source = None
+    destination = None
+    try:
+        source = sqlite3.connect(str(config.DB_PATH), timeout=10)
+        destination = sqlite3.connect(str(backup_path), timeout=10)
+        source.backup(destination)
+        destination.close()
+        destination = None
+        source.close()
+        source = None
+        return FileResponse(backup_path, media_type="application/vnd.sqlite3", filename="nano-ai-backup.sqlite3", background=BackgroundTask(backup_path.unlink, missing_ok=True))
+    except sqlite3.Error as exc:
+        if destination is not None:
+            destination.close()
+        if source is not None:
+            source.close()
+        backup_path.unlink(missing_ok=True)
+        raise HTTPException(500, "Could not create a consistent database backup.") from exc
+
 
 @app.get("/api/export")
 def export_data():
