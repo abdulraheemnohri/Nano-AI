@@ -16,6 +16,7 @@ from .runtime import status,installed_models,registry_models
 from .model_manager import info,import_model
 from .web import HTML
 from .voice import transcribe_wav,speak,voice_status
+from .tools import list_tools, run_tool, set_enabled as set_tool_enabled
 
 app=FastAPI(title="Nano AI",version="0.5.0")
 @app.on_event("startup")
@@ -27,6 +28,7 @@ class KnowledgeIn(BaseModel): text:str; source:str="local"
 class ConversationIn(BaseModel): title:str="New conversation"
 class SkillProposalIn(BaseModel): name:str; description:str; prompt:str
 class ModelImportIn(BaseModel): repo:str; filename:str; model_id:str|None=None
+class ToolRunIn(BaseModel): name:str; arguments:dict
 
 @app.get("/",response_class=HTMLResponse)
 def home(): return HTML
@@ -51,6 +53,20 @@ def chat_api(x:ChatIn):
     try: return {"answer":respond(x.conversation_id,x.message)}
     except ValueError as e: raise HTTPException(404,str(e))
     except Exception as e: raise HTTPException(503,str(e))
+
+@app.get("/api/tools")
+def tools_list(): return list_tools()
+
+@app.post("/api/tools/run")
+def tools_run(x:ToolRunIn):
+    try: return run_tool(x.name, x.arguments)
+    except ValueError as e: raise HTTPException(400, str(e))
+    except PermissionError as e: raise HTTPException(403, str(e))
+
+@app.post("/api/tools/{name}/enabled")
+def tools_enabled(name:str, enabled:bool=True):
+    try: return set_tool_enabled(name, enabled)
+    except ValueError as e: raise HTTPException(404, str(e))
 
 @app.get("/api/memories")
 def memories(q:str=""): return search(q,50)
