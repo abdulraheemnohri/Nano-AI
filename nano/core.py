@@ -5,7 +5,7 @@ from .db import init_db
 from .learning import learn_from_text, feedback_examples
 from .memory import search as search_memory
 from .model import chat
-from .settings import bool_value, int_value
+from .settings import bool_value, int_value, public
 from .skills import active_prompts
 from .tools import run_tool
 
@@ -18,6 +18,9 @@ def build_context(query):
     ms = search_memory(query, int_value("memory_limit", 6))
     mt = "\n".join("- " + m["content"] for m in ms)
     sp = active_prompts()
+    preferences = public()
+    language = str(preferences.get("language", "auto")).strip()
+    language_text = "Preferred response language: " + language + ". Respond in that language unless the user requests another." if language and language.lower() != "auto" else ""
     feedback = feedback_examples(5)
     guidance = []
     for item in feedback:
@@ -33,6 +36,7 @@ def build_context(query):
         item for item in (
             "Relevant memory:\n" + mt if mt else "",
             "Active skills:\n" + sp if sp else "",
+            language_text,
             feedback_text,
         ) if item
     )
