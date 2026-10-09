@@ -187,6 +187,8 @@ def search_web(query, limit=8):
                 href = item["url"]
                 if href.startswith("//"):
                     href = "https:" + href
+                elif href.startswith("/"):
+                    href = urllib.parse.urljoin("https://html.duckduckgo.com", href)
                 parsed = urllib.parse.urlparse(href)
                 if parsed.scheme == "https" and parsed.hostname:
                     target = urllib.parse.parse_qs(parsed.query).get("uddg", [href])[0]
