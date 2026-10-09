@@ -185,3 +185,8 @@ The System page's GitHub updater now creates an integrity-checked SQLite snapsho
 ### Memory consolidation review
 
 The Memory page can scan for exact duplicates and highly similar active memories, then queue suggestions for manual review. Nano never merges memories during scanning. Approving a proposal creates a new active memory and marks its source records as `merged` in one SQLite transaction; rejecting leaves the originals untouched. The proposal text is editable before approval. API routes are `GET /api/memories/duplicates`, `GET /api/memories/consolidation`, `POST /api/memories/consolidation/scan`, and the proposal-specific `approve` / `reject` endpoints.
+
+
+## Scheduler retries and recovery
+
+Recurring assistant-prompt jobs support a bounded retry policy with exponential backoff. Configure the maximum attempts and base retry delay when creating a job. The Automation & Agents page shows the last error and provides a manual Retry now action. Startup marks unfinished runs as interrupted and schedules a retry when attempts remain. This scheduler is an in-process, single-worker feature, not a distributed task queue. See docs/A_TO_Z_AUDIT.md for the complete feature inventory and limitations.
