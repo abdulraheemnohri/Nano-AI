@@ -83,6 +83,7 @@ def test_feedback_api_and_autonomous_talk_opt_in(tmp_path, monkeypatch):
     path = tmp_path / "api.sqlite3"
     monkeypatch.setattr(config, "DB_PATH", path)
     monkeypatch.setattr(db, "DB_PATH", path)
+    init_db()
     set_value("autonomous_talk_enabled", "false")
     with TestClient(app_module.app) as client:
         conversation = client.post("/api/conversations", json={"title": "Feedback API"}).json()
