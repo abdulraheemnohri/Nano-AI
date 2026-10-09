@@ -1,4 +1,5 @@
 import threading
+import time
 
 import pytest
 
@@ -36,6 +37,6 @@ def test_start_import_task_reports_running_and_completion(monkeypatch):
             state = model_manager.auto_setup_status()
             if state["status"] == "complete":
                 break
-            release.wait(timeout=0.01)
+            time.sleep(0.01)
         with model_manager._AUTO_LOCK:
             model_manager._AUTO_STATE.update(status="idle", message="test cleanup", model_id=None)
