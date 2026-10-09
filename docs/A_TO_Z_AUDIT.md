@@ -81,3 +81,20 @@ Audit scope: current `main` source tree. This inventory distinguishes implemente
 - The Memory UI shows source records and an editable consolidated text before approval.
 - Approval validates that every source remains active, then atomically inserts the replacement and marks source records `merged`; rejecting preserves source records unchanged.
 - API: `GET /api/memories/duplicates`, `GET /api/memories/consolidation`, `POST /api/memories/consolidation/scan`, `POST /api/memories/consolidation/{id}/approve`, and `POST /api/memories/consolidation/{id}/reject`.
+
+
+## Scheduler reliability hardening (current implementation)
+
+- Scheduled assistant-prompt jobs support bounded retry attempts (1-10) and exponential backoff from a configurable 5-3600 second base, capped at one hour.
+- Each run records its attempt number and outcome. Failed attempts retain a bounded error message; a successful run clears retry state.
+- Startup recovery marks stale running records as interrupted, clears orphaned claims, and schedules a bounded retry when attempts remain.
+- The Automation & Agents UI shows retry settings and last errors, and offers an explicit manual retry action.
+- API creation fields: max_attempts, retry_delay_seconds. Manual retry: POST /api/scheduler/jobs/{id}/retry.
+- Scheduler remains a single-process in-app worker; it is not a distributed queue. A running model request is bounded by the LiteRT-LM request timeout, not a separate forcibly cancellable per-job timeout.
+
+## Final A-to-Z review notes
+
+- Repository inventory and docs are reviewed against the checked-in source tree. Implemented means code exists; the test suite and CI provide separate evidence, and external model/voice/browser integrations still require environment-specific validation.
+- The two GitHub Actions workflows previously ran the same test command. Keep one canonical workflow to avoid duplicate CI executions.
+- Release verification should include python -m pip install -e ".[test]", python -m pytest -q, a local LiteRT-LM smoke test, backup/restore rehearsal, and remote-access security checks if remote binding is enabled.
+- Known non-goals/gaps remain: no multi-user tenancy/RBAC, no distributed scheduler, no unrestricted shell, no complete MCP transport/OAuth implementation, no native WhatsApp/email/Slack/Discord event adapters, no silent model-weight training, and no automatic dependency installation/restart during updates.
