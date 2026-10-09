@@ -74,7 +74,7 @@ def find_duplicate_candidates(limit=100):
 
 def create_consolidation_proposals(limit=50):
     """Queue deduplicated suggestions for user review. Does not merge or delete anything."""
-    existing = rows("SELECT source_ids FROM memory_consolidation_proposals WHERE status='pending'")
+    existing = rows("SELECT source_ids FROM memory_consolidation_proposals")
     known = {tuple(sorted(json.loads(item["source_ids"]))) for item in existing}
     created = 0
     for candidate in find_duplicate_candidates(limit=300):
@@ -144,10 +144,11 @@ def approve_consolidation(proposal_id, merged_content=None):
 
 
 def reject_consolidation(proposal_id):
-    changed = run(
-        "UPDATE memory_consolidation_proposals SET status='rejected',reviewed_at=CURRENT_TIMESTAMP WHERE id=? AND status='pending'",
-        (proposal_id,),
-    )
-    if not changed:
-        raise ValueError("Pending consolidation proposal not found")
+    with connect() as connection:
+        cursor = connection.execute(
+            "UPDATE memory_consolidation_proposals SET status='rejected',reviewed_at=CURRENT_TIMESTAMP WHERE id=? AND status='pending'",
+            (proposal_id,),
+        )
+        if cursor.rowcount != 1:
+            raise ValueError("Pending consolidation proposal not found")
     return {"ok": True}
