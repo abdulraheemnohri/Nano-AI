@@ -82,7 +82,7 @@ Open the Model page and choose **Auto setup / download default model**. Nano che
 
 ## Project audit
 
-See [docs/A_TO_Z_AUDIT.md](docs/A_TO_Z_AUDIT.md) for an implementation inventory, known gaps, security constraints, and verification checklist. It explicitly separates shipped features from planned or partial capabilities.
+See [docs/A_TO_Z_AUDIT.md](docs/A_TO_Z_AUDIT.md) for an implementation inventory, known gaps, security constraints, and verification checklist. It explicitly separates shipped features from planned or partial capabilities. See [docs/FINAL_RELEASE_REVIEW.md](docs/FINAL_RELEASE_REVIEW.md) for the final A-to-Z release decision, automated-test evidence, target-machine release gate, and explicit non-goals.
 
 ## Automation, agents, authentication, channels and MCP
 
