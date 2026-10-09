@@ -163,8 +163,12 @@ def model_auto_setup():
 def model_auto_setup_status(): return auto_setup_status()
 @app.post("/api/models/import")
 def model_import(x:ModelImportIn):
-    try: return {"model_id":import_model(x.repo,x.filename,x.model_id)}
-    except Exception as e: raise HTTPException(503,str(e))
+    try:
+        return {"model_id": import_model(x.repo, x.filename, x.model_id)}
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except RuntimeError as e:
+        raise HTTPException(503, str(e))
 
 @app.get("/api/system")
 def system(): return {"version":"0.5.0","host":config.HOST,"port":config.PORT,"runtime":status(),"voice":voice_status(),"paths":{"data":str(config.DATA_DIR),"models":str(config.MODEL_DIR),"skills":str(config.SKILLS_DIR),"database":str(config.DB_PATH)}}
