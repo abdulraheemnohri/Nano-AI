@@ -27,6 +27,13 @@ def browser_action(action, url, selector=None, value=None, approved=False):
         browser=p.chromium.launch(headless=True)
         page=browser.new_page()
         try:
+            def guard_route(route):
+                try:
+                    _allowed_url(route.request.url)
+                    route.continue_()
+                except ValueError:
+                    route.abort()
+            page.route("**/*", guard_route)
             page.goto(target,wait_until="domcontentloaded",timeout=15000)
             if action=="click": page.locator(selector).first.click(timeout=5000)
             elif action=="fill": page.locator(selector).first.fill(value,timeout=5000)
