@@ -27,3 +27,13 @@ def test_auto_setup_does_not_start_duplicate_worker(monkeypatch):
         release.set()
         with model_manager._AUTO_LOCK:
             model_manager._AUTO_STATE.update(status="idle", message="test cleanup", model_id=None)
+
+
+def test_model_import_state_is_persisted(monkeypatch, tmp_path):
+    state_file = tmp_path / "model-import-state.json"
+    monkeypatch.setattr(model_manager, "_STATE_FILE", state_file)
+    model_manager._set_task(status="running", phase="downloading", progress=37, message="test")
+    import json
+    saved = json.loads(state_file.read_text(encoding="utf-8"))
+    assert saved["status"] == "running"
+    assert saved["progress"] == 37
