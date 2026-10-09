@@ -57,6 +57,10 @@ def _normalize(key, value):
         if not value or len(value) > 1000:
             raise ValueError("autonomous_talk_prompt must contain 1-1000 characters.")
         return value
+    if key == "autonomous_talk_prompt":
+        if not value or len(value) > 1000:
+            raise ValueError("autonomous_talk_prompt must contain 1-1000 characters.")
+        return value
     if key == "language":
         if not value:
             return "auto"
@@ -140,6 +144,10 @@ def schema():
     for key, default in DEFAULTS.items():
         kind = "boolean" if key in BOOL_KEYS else "number" if key in INT_KEYS or key == "temperature" else "choice" if key == "theme" else "text"
         item = {"key": key, "default": default, "description": DESCRIPTIONS.get(key, "Nano AI setting."), "type": kind}
+        if key == "language":
+            item["max_length"] = 32
+        elif key == "autonomous_talk_prompt":
+            item["max_length"] = 1000
         if key == "theme":
             item["choices"] = ["dark", "light", "system"]
         elif key == "temperature":
