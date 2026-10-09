@@ -284,7 +284,7 @@ async def restore_database(file: UploadFile = File(...)):
                 if not integrity or integrity[0] != "ok":
                     raise HTTPException(400, "Backup failed SQLite integrity_check.")
                 tables = {row[0] for row in check.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-                required = {"conversations", "messages", "memories", "settings", "skills"}
+                required = {"conversations", "messages", "memories", "learning_events", "settings", "skills", "skill_proposals"}
                 if not required.issubset(tables):
                     raise HTTPException(400, "Backup is not a compatible Nano AI database.")
             finally:
