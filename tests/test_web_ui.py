@@ -31,3 +31,10 @@ def test_model_page_renders_served_and_registry_lists():
     assert "api('/api/models/registry')" in html
     assert "api('/api/health')" in html
     assert "refreshAutoModel(); loadModelLists(); }" in html
+
+def test_sidebar_conversation_paging_wiring():
+    html = web.HTML
+    assert "async function moreConvs()" in html
+    assert "addLoadMoreBtn" in html
+    assert "m.id='moreConvs'" in html
+    assert "api('/api/conversations?limit=200&offset='+convOffset)" in html

@@ -87,3 +87,19 @@ def test_conversation_list_is_bounded(tmp_path, monkeypatch):
 
     oversized = client.get("/api/conversations", params={"limit": 99999}).json()
     assert len(oversized) == 5
+
+
+def test_conversation_list_supports_offset_paging(tmp_path, monkeypatch):
+    client = _setup(tmp_path, monkeypatch)
+    for i in range(5):
+        client.post("/api/conversations", json={"title": "page-%d" % i})
+
+    page1 = client.get("/api/conversations", params={"limit": 3}).json()
+    page2 = client.get("/api/conversations", params={"limit": 3, "offset": 3}).json()
+    assert len(page1) == 3
+    assert len(page2) == 2
+    ids1 = {c["id"] for c in page1}
+    ids2 = {c["id"] for c in page2}
+    assert not (ids1 & ids2)
+    negative = client.get("/api/conversations", params={"offset": -5}).json()
+    assert len(negative) == 5

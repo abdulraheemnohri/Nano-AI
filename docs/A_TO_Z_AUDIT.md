@@ -146,3 +146,9 @@ Audit scope: current `main` source tree. This inventory distinguishes implemente
 - `GET /api/conversations` is now bounded (`limit` query parameter, default 200, hard cap 500, ordered by recency) instead of returning every conversation row on each sidebar load.
 - Database restore keeps only the 10 newest `recovery/pre-restore-*.sqlite3` snapshots (`_prune_recovery_snapshots`); pruning failures never abort the restore.
 - Coverage: `tests/test_conversations_api.py` (limit bounding and clamping) and `tests/test_restore.py` (retention keeps 10 newest including the fresh snapshot).
+
+## Sidebar conversation paging (Phase 4 improvement)
+
+- `GET /api/conversations` accepts a non-negative `offset` for paging alongside the bounded `limit`.
+- The Talk sidebar loads up to 200 conversations at a time and appends a "Load more conversations" button when a full page is returned; older conversations load on demand instead of inflating the initial page.
+- Coverage: `tests/test_conversations_api.py` (offset paging, disjoint pages, negative offset clamped) and `tests/test_web_ui.py` (paging wiring present).

@@ -606,9 +606,10 @@ def mcp_endpoint(message:dict):
 def system(): return {"version":"0.5.0","host":config.HOST,"port":config.PORT,"runtime":status(),"voice":voice_status(),"paths":{"data":str(config.DATA_DIR),"models":str(config.MODEL_DIR),"skills":str(config.SKILLS_DIR),"database":str(config.DB_PATH)}}
 
 @app.get("/api/conversations")
-def conversations(limit:int=200):
+def conversations(limit:int=200,offset:int=0):
     bounded=max(1,min(500,limit))
-    return rows("SELECT * FROM conversations ORDER BY updated_at DESC,id DESC LIMIT ?",(bounded,))
+    safe_offset=max(0,int(offset))
+    return rows("SELECT * FROM conversations ORDER BY updated_at DESC,id DESC LIMIT ? OFFSET ?",(bounded,safe_offset))
 @app.post("/api/conversations")
 def conversation_create(x:ConversationIn):
     title=x.title.strip()[:120] or "New conversation"; cid=run("INSERT INTO conversations(title) VALUES(?)",(title,))

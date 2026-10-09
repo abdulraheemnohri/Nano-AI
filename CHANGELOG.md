@@ -5,7 +5,7 @@ Notable changes to Nano AI are documented here. Releases follow the repository's
 ## 0.5.x - 2026-10
 
 ### Added
-- Bounded `GET /api/conversations` list (`limit` query parameter, default 200, capped at 500) so the sidebar no longer loads every conversation.
+- Bounded `GET /api/conversations` list (`limit` query parameter, default 200, capped at 500; `offset` for paging) so the sidebar no longer loads every conversation. The Talk sidebar loads conversations in pages of 200 with a "Load more conversations" button when more exist.
 - Restore now prunes old `recovery/pre-restore-*.sqlite3` snapshots, keeping only the 10 newest, so repeated restores cannot fill the disk.
 - Conversation management: `regenerate()` in core plus `POST /api/chat/regenerate`, `GET /api/conversations/search?q=` (LIKE search with escaped wildcards), and `GET /api/conversations/{cid}/export`. The Talk UI gained conversation search, Regenerate, Rename, Delete, and Export controls.
 - Scheduler per-job hard timeout: new `timeout_seconds` column on `scheduled_jobs` (default 300, range 5-86400). Model requests run in a daemon worker thread; timeouts are recorded as `JobTimeoutError` attempts and follow the existing bounded retry policy. `POST /api/scheduler/jobs` accepts `timeout_seconds`, and the Automation UI exposes a run-timeout field.
