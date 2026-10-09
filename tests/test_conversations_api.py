@@ -8,6 +8,9 @@ def _setup(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "DB_PATH", path)
     monkeypatch.setattr(db, "DB_PATH", path)
     db.init_db()
+    # init_db seeds a default conversation; isolate API pagination tests from it.
+    db.run("DELETE FROM messages")
+    db.run("DELETE FROM conversations")
     calls = {"n": 0}
     def fake_chat(history, user_text=None, context=""):
         calls["n"] += 1
