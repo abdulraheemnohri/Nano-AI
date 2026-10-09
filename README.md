@@ -80,6 +80,12 @@ Built-in tools remain local and allowlisted. Optional restricted terminal and Pl
 
 Open the Model page and choose **Auto setup / download default model**. Nano checks whether the LiteRT-LM CLI is installed and whether the configured Qwen3 1.7B model is listed in the registry. If it is missing, Nano runs the project's configured LiteRT-LM import operation in a background task and exposes status at `GET /api/models/auto-setup`. Starting setup is an explicit user action because the model may require about 1 GB of storage and bandwidth. The setup process does not silently download models on application startup. The Model page also provides a custom import form for a user-supplied Hugging Face repository, exact artifact filename, and local model ID; use artifact names supported by your installed LiteRT-LM release. For API clients, `POST /api/models/import-task` queues a validated custom import without holding the request open; poll `GET /api/models/auto-setup` for `queued`, `running`, `complete`, or `error` state. Only one model setup/import task can run at a time.
 
+## Live system health dashboard
+
+Open **System** in the Nano AI web UI and use **Refresh health** to inspect live, read-only status from the running process. The dashboard shows SQLite integrity and conversation/message/memory counts, LiteRT-LM endpoint connectivity, scheduler worker status, recent failed/interrupted scheduled runs, and optional Vosk/Piper readiness. Raw JSON is available for troubleshooting.
+
+The same snapshot is available from `GET /api/system/health`. Health inspection does not restart workers, repair the database, or change configuration. A warning indicates an unavailable optional service or a condition that needs review; use the detailed check message before taking action.
+
 ## Installation diagnostics
 
 Run the read-only diagnostic command after installation:
