@@ -10,6 +10,7 @@ Nano AI is local-first by default.
 - MCP exposes only the enabled built-in allowlisted tools; it does not expose arbitrary Python execution.
 - The terminal runner never invokes a shell. It exposes a fixed set of read-oriented commands, validates relative paths, bounds output, and requires explicit approval for each run.
 - Browser automation is optional, host-allowlisted, and requires explicit approval for click/fill actions. By default it can inspect localhost only.
+- Desktop control is disabled unless `NANO_ENABLE_DESKTOP_CONTROL=true`; screenshot is read-only, while click/type/key actions require explicit approval and use a small key/coordinate allowlist.
 - Outbound webhooks require HTTPS and a host allowlist. Add custom hosts through `NANO_WEBHOOK_ALLOWED_HOSTS`.
 - Scheduled jobs execute user-authored assistant prompts, not arbitrary shell commands. Review jobs and run history.
 - Model import cancellation terminates the child process; progress is best-effort. If LiteRT-LM does not emit a percentage, the UI labels progress as an estimate.
