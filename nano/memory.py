@@ -16,7 +16,7 @@ def search(query, limit=8):
     if not query:
         return rows("SELECT * FROM memories WHERE status='active' ORDER BY confidence DESC,updated_at DESC LIMIT ?", (limit,))
     q = f"%{query}%"
-    return rows("SELECT * FROM memories WHERE status='active' AND content LIKE ? ESCAPE '\\\\' ORDER BY confidence DESC,updated_at DESC LIMIT ?", (q.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_'), limit))
+    return rows("SELECT * FROM memories WHERE status='active' AND content LIKE ? ESCAPE '\\' ORDER BY confidence DESC,updated_at DESC LIMIT ?", (q.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_'), limit))
 
 
 def forget(mid):
