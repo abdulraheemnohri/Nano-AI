@@ -11,7 +11,7 @@ Audit scope: current `main` source tree. This inventory distinguishes implemente
 | Skills | Enabled skills and proposal approval/rejection | `nano/skills.py`, `/api/skills` |
 | Built-in tools | Bounded calculator, time, unit conversion, text stats, memory/knowledge search | `nano/tools.py`, `/api/tools` |
 | Model management | Validated background import, cancellation, best-effort percentage/estimate, persistent task status and interrupted-task recovery | `nano/model_manager.py`, `/api/models/auto-setup`, `/api/models/import-task/cancel` |
-| Scheduler | Persistent interval jobs, enable/pause/delete, run history; assistant-prompt jobs only | `nano/scheduler.py`, `/api/scheduler/jobs`, `/api/scheduler/runs` |
+| Scheduler | Persistent interval jobs, enable/pause/delete, bounded exponential retries, manual retry, interrupted-run recovery, run history; assistant-prompt jobs only | `nano/scheduler.py`, `/api/scheduler/jobs`, `/api/scheduler/runs` |
 | Delegation | Researcher/coder/planner/reviewer/writer specialist prompts, bounded task size and timeout | `nano/agents.py`, `/api/agents/delegate` |
 | Authentication | Bearer token / X-Nano-Token, remote peer guard, CLI remote-bind guard | `nano/security.py`, `nano/app.py`, `nano/cli.py` |
 | Terminal | Fixed command allowlist, no shell, workspace path guard, per-action approval | `nano/terminal.py`, `/api/terminal/run` |
