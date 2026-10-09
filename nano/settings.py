@@ -57,10 +57,6 @@ def _normalize(key, value):
         if not value or len(value) > 1000:
             raise ValueError("autonomous_talk_prompt must contain 1-1000 characters.")
         return value
-    if key == "autonomous_talk_prompt":
-        if not value or len(value) > 1000:
-            raise ValueError("autonomous_talk_prompt must contain 1-1000 characters.")
-        return value
     if key == "language":
         if not value:
             return "auto"
