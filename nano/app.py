@@ -28,7 +28,7 @@ from .browser import browser_action
 from .messaging import telegram_send, webhook_send
 from .mcp import handle_message
 from .desktop import desktop_action
-from .updates import check_update, apply_update
+from .updates import check_update, apply_update, rollback_update
 
 app=FastAPI(title="Nano AI",version="0.5.0")
 @app.on_event("startup")
@@ -85,6 +85,9 @@ class ProactiveTalkIn(BaseModel):
     prompt:str|None = Field(default=None,max_length=1000)
 class UpdateApplyIn(BaseModel):
     approved:bool = False
+class UpdateRollbackIn(BaseModel):
+    approved:bool = False
+    restore_database:bool = False
 class SettingIn(BaseModel): key:str; value:str
 class KnowledgeIn(BaseModel): text:str; source:str="local"
 class ConversationIn(BaseModel): title:str="New conversation"
@@ -153,6 +156,12 @@ def system_update_check():
 @app.post("/api/system/update/apply")
 def system_update_apply(x:UpdateApplyIn):
     try: return apply_update(x.approved)
+    except PermissionError as e: raise HTTPException(403,str(e))
+    except RuntimeError as e: raise HTTPException(409,str(e))
+
+@app.post("/api/system/update/rollback")
+def system_update_rollback(x:UpdateRollbackIn):
+    try: return rollback_update(x.approved, x.restore_database)
     except PermissionError as e: raise HTTPException(403,str(e))
     except RuntimeError as e: raise HTTPException(409,str(e))
 
