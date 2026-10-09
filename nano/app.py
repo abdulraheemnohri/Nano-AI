@@ -13,7 +13,8 @@ from .knowledge import ingest,recent
 from .skills import seed,list_all,set_enabled,proposals,accept,reject
 from .settings import public,set_value,reset
 from .runtime import status,installed_models,registry_models
-from .model_manager import info,import_model
+from .model_manager import info,import_model,start_auto_setup,auto_setup_status
+from .research import search_web,research_and_learn
 from .web import HTML
 from .voice import transcribe_wav,speak,voice_status
 from .tools import list_tools, run_tool, set_enabled as set_tool_enabled
@@ -98,6 +99,21 @@ def skill_enabled(name:str,enabled:bool=True):
 @app.get("/api/knowledge")
 def knowledge(): return recent(100)
 
+class WebSearchIn(BaseModel): query:str; limit:int=8
+class WebLearnIn(BaseModel): url:str; label:str|None=None
+
+@app.post("/api/research/search")
+def research_search(x:WebSearchIn):
+    try: return search_web(x.query,x.limit)
+    except ValueError as e: raise HTTPException(400,str(e))
+    except RuntimeError as e: raise HTTPException(502,str(e))
+
+@app.post("/api/research/learn")
+def research_learn(x:WebLearnIn):
+    try: return research_and_learn(x.url,x.label)
+    except ValueError as e: raise HTTPException(400,str(e))
+    except RuntimeError as e: raise HTTPException(502,str(e))
+
 @app.delete("/api/knowledge")
 def knowledge_clear():
     run("UPDATE memories SET status='deleted',updated_at=CURRENT_TIMESTAMP WHERE kind='knowledge' AND status='active'")
@@ -136,6 +152,15 @@ def model(): return info()
 def models(): return installed_models()
 @app.get("/api/models/registry")
 def model_registry(): return registry_models()
+
+@app.post("/api/models/auto-setup")
+def model_auto_setup():
+    state=start_auto_setup()
+    if state["status"] == "error": raise HTTPException(503,state["message"])
+    return state
+
+@app.get("/api/models/auto-setup")
+def model_auto_setup_status(): return auto_setup_status()
 @app.post("/api/models/import")
 def model_import(x:ModelImportIn):
     try: return {"model_id":import_model(x.repo,x.filename,x.model_id)}
