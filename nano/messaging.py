@@ -3,14 +3,17 @@ import json
 import os
 import ipaddress
 from urllib.parse import urlparse
-from urllib.request import Request, urlopen
+from urllib.request import Request, urlopen, build_opener, HTTPRedirectHandler
 from urllib.error import URLError, HTTPError
 
 def _post_json(url, payload, headers=None, timeout=15):
     data=json.dumps(payload).encode("utf-8")
     req=Request(url,data=data,headers={"Content-Type":"application/json",**(headers or {})},method="POST")
+    class NoRedirect(HTTPRedirectHandler):
+        def redirect_request(self, req, fp, code, msg, headers, newurl):
+            return None
     try:
-        with urlopen(req,timeout=timeout) as response:
+        with build_opener(NoRedirect).open(req,timeout=timeout) as response:
             raw=response.read(65536).decode("utf-8","replace")
             return {"ok":200 <= response.status < 300,"status_code":response.status,"response":raw[:4000]}
     except (URLError,HTTPError,TimeoutError) as exc:
@@ -37,4 +40,5 @@ def webhook_send(url, text):
     if host not in allowed:
         raise ValueError("Webhook host is not allowlisted. Use Slack/Discord or add it to NANO_WEBHOOK_ALLOWED_HOSTS.")
     if not str(text).strip() or len(str(text))>12000: raise ValueError("Message must contain 1 to 12000 characters.")
-    return _post_json(url,{"text":str(text)})
+    payload={"content":str(text)} if host in {"discord.com","discordapp.com"} else {"text":str(text)}
+    return _post_json(url,payload)
