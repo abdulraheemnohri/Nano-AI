@@ -2,18 +2,19 @@ import re
 from .db import rows, run
 
 PATTERNS = [
-    (r"\\bremember that\\s+(.+)", "fact", 0.9),
-    (r"\\bmy name is\\s+(.+)", "preference", 0.95),
-    (r"\\bi prefer\\s+(.+)", "preference", 0.9),
-    (r"\\bi like\\s+(.+)", "preference", 0.85),
-    (r"\\blearn that\\s+(.+)", "fact", 0.9),
-    (r"\\bremember\\s+(.+)", "fact", 0.8),
+    (r"\bremember that\s+(.+)", "fact", 0.9),
+    (r"\bmy name is\s+(.+)", "preference", 0.95),
+    (r"\bi prefer\s+(.+)", "preference", 0.9),
+    (r"\bi like\s+(.+)", "preference", 0.85),
+    (r"\blearn that\s+(.+)", "fact", 0.9),
+    (r"\bremember\s+(.+)", "fact", 0.8),
 ]
 MAX_LEARNED_CHARS = 1000
+MAX_EVENT_CHARS = 12000
 
 
 def _clean(value):
-    value = re.sub(r"\\s+", " ", value).strip().rstrip(".!?")
+    value = re.sub(r"\s+", " ", value).strip().rstrip(".!?")
     return value[:MAX_LEARNED_CHARS].strip()
 
 
@@ -28,19 +29,36 @@ def learn_from_text(text):
         content = _clean(match.group(1))
         if not content:
             continue
-        existing = rows("SELECT id,kind,confidence FROM memories WHERE status='active' AND content=? LIMIT 1", (content,))
+        existing = rows(
+            "SELECT id,kind,confidence FROM memories WHERE status='active' AND content=? LIMIT 1",
+            (content,),
+        )
         if existing:
-            found.append({"id": existing[0]["id"], "kind": existing[0]["kind"], "content": content, "confidence": existing[0]["confidence"]})
+            found.append({
+                "id": existing[0]["id"],
+                "kind": existing[0]["kind"],
+                "content": content,
+                "confidence": existing[0]["confidence"],
+            })
             continue
-        mid = run("INSERT INTO memories(kind,content,confidence,status,source) VALUES(?,?,?,?,?)", (kind, content, confidence, "active", "conversation"))
+        mid = run(
+            "INSERT INTO memories(kind,content,confidence,status,source) VALUES(?,?,?,?,?)",
+            (kind, content, confidence, "active", "conversation"),
+        )
         found.append({"id": mid, "kind": kind, "content": content, "confidence": confidence})
-    run("INSERT INTO learning_events(event_type,input_text,result) VALUES(?,?,?)", ("conversation", text[:12000], str(found)))
+    run(
+        "INSERT INTO learning_events(event_type,input_text,result) VALUES(?,?,?)",
+        ("conversation", text[:MAX_EVENT_CHARS], str(found)),
+    )
     return found
 
 
 def memories(limit=20):
     limit = max(1, min(int(limit), 500))
-    return rows("SELECT * FROM memories WHERE status='active' ORDER BY confidence DESC,updated_at DESC LIMIT ?", (limit,))
+    return rows(
+        "SELECT * FROM memories WHERE status='active' ORDER BY confidence DESC,updated_at DESC LIMIT ?",
+        (limit,),
+    )
 
 
 def events(limit=100):
