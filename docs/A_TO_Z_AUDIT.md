@@ -98,3 +98,8 @@ Audit scope: current `main` source tree. This inventory distinguishes implemente
 - The two GitHub Actions workflows previously ran the same test command. Keep one canonical workflow to avoid duplicate CI executions.
 - Release verification should include python -m pip install -e ".[test]", python -m pytest -q, a local LiteRT-LM smoke test, backup/restore rehearsal, and remote-access security checks if remote binding is enabled.
 - Known non-goals/gaps remain: no multi-user tenancy/RBAC, no distributed scheduler, no unrestricted shell, no complete MCP transport/OAuth implementation, no native WhatsApp/email/Slack/Discord event adapters, no silent model-weight training, and no automatic dependency installation/restart during updates.
+
+
+## Final-review release blocker
+
+- **Update rollback manifest serialization needs correction before release.** In nano/updates.py, _write_recovery_manifest currently appends a literal backslash followed by the letter n rather than an actual newline after the JSON document. That trailing text can make json.loads reject the manifest during rollback. Correct the writer to append an actual newline (source expression: json.dumps(manifest, indent=2) + "\n") and add a regression test that writes then reads the manifest. This issue was identified during final review but is not fixed in this revision; do not consider updater rollback release-ready until verified.
