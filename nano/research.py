@@ -83,14 +83,16 @@ def _open(url, timeout=12):
     final_url = response.geturl()
     _validate_public_url(final_url)
     content_type = response.headers.get_content_type()
+    charset = response.headers.get_content_charset() or "utf-8"
     if content_type not in {"text/html", "application/xhtml+xml", "text/plain"}:
         response.close()
         raise ValueError("This page is not HTML or plain text.")
-    data = response.read(MAX_PAGE_BYTES + 1)
-    response.close()
+    try:
+        data = response.read(MAX_PAGE_BYTES + 1)
+    finally:
+        response.close()
     if len(data) > MAX_PAGE_BYTES:
         raise ValueError("Page is too large (limit 1.5 MB).")
-    charset = response.headers.get_content_charset() or "utf-8"
     return final_url, content_type, data.decode(charset, errors="replace")
 
 
