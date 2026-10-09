@@ -57,6 +57,6 @@ def test_system_health_does_not_treat_optional_voice_as_a_failure(tmp_path, monk
     monkeypatch.setattr(scheduler, "_thread", RunningThread())
     monkeypatch.setattr(scheduler, "_stop", ClearStopEvent())
     report = system_health.system_health()
-    assert report["overall"] == "warn"
+    assert report["overall"] == "ok"
     voice = next(item for item in report["checks"] if item["name"] == "voice")
     assert voice["status"] == "info"
