@@ -80,6 +80,15 @@ Tools do not run shell commands, arbitrary Python, browser automation, or extern
 
 Open the Model page and choose **Auto setup / download default model**. Nano checks whether the LiteRT-LM CLI is installed and whether the configured Qwen3 1.7B model is listed in the registry. If it is missing, Nano runs the project's configured LiteRT-LM import operation in a background task and exposes status at `GET /api/models/auto-setup`. Starting setup is an explicit user action because the model may require about 1 GB of storage and bandwidth. The setup process does not silently download models on application startup. The Model page also provides a custom import form for a user-supplied Hugging Face repository, exact artifact filename, and local model ID; use artifact names supported by your installed LiteRT-LM release.
 
+## Development and tests
+
+Install the test extra and run the suite:
+
+    python -m pip install -e ".[test]"
+    python -m pytest -q
+
+GitHub Actions runs the test suite on pushes to `main`, pull requests targeting `main`, and manual workflow dispatch. Model import requests validate the Hugging Face repository, `.litertlm` artifact filename, and model ID before invoking LiteRT-LM; the CLI import is bounded by a two-hour timeout. Invalid input returns HTTP 400, while runtime/import failures return HTTP 503.
+
 ## Web research and local learning
 
 Open **Web Research**, search the web, then choose a result to read and save to Nano's local knowledge database. You can also paste a public HTTPS page URL. Nano limits page size and supported content types, blocks local/private network targets, and extracts readable text without executing page JavaScript. Research endpoints are `POST /api/research/search` and `POST /api/research/learn`. Web content is untrusted reference material; it is not run as code or treated as system instructions. Searching and fetching pages require an internet connection; saved knowledge remains in Nano's local database.
