@@ -500,6 +500,7 @@ def scheduler_delete(job_id:int): return delete_job(job_id)
 def scheduler_retry(job_id:int):
     try: return retry_job(job_id)
     except KeyError as e: raise HTTPException(404,str(e))
+    except ValueError as e: raise HTTPException(409,str(e))
 
 @app.get("/api/scheduler/runs")
 def scheduler_runs(job_id:int|None=None,limit:int=100): return list_runs(job_id,limit)
