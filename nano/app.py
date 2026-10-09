@@ -26,6 +26,7 @@ from .terminal import run_command
 from .browser import browser_action
 from .messaging import telegram_send, webhook_send
 from .mcp import handle_message
+from .desktop import desktop_action
 
 app=FastAPI(title="Nano AI",version="0.5.0")
 @app.on_event("startup")
@@ -89,6 +90,13 @@ class BrowserIn(BaseModel):
     selector:str|None = None
     value:str|None = None
     approved:bool = False
+class DesktopIn(BaseModel):
+    action:str
+    x:int|None=None
+    y:int|None=None
+    text:str|None=None
+    key:str|None=None
+    approved:bool=False
 class TelegramSendIn(BaseModel):
     chat_id:str = Field(min_length=1,max_length=100)
     text:str = Field(min_length=1,max_length=4000)
@@ -320,6 +328,13 @@ def terminal_run(x:TerminalIn):
 @app.post("/api/browser/action")
 def browser_control(x:BrowserIn):
     try: return browser_action(x.action,x.url,x.selector,x.value,x.approved)
+    except ValueError as e: raise HTTPException(400,str(e))
+    except PermissionError as e: raise HTTPException(403,str(e))
+    except RuntimeError as e: raise HTTPException(503,str(e))
+
+@app.post("/api/computer/action")
+def computer_control(x:DesktopIn):
+    try: return desktop_action(x.action,x.x,x.y,x.text,x.key,x.approved)
     except ValueError as e: raise HTTPException(400,str(e))
     except PermissionError as e: raise HTTPException(403,str(e))
     except RuntimeError as e: raise HTTPException(503,str(e))
