@@ -23,3 +23,8 @@ Install Piper locally or use `piper-tts`. Put a local `.onnx` voice under `model
 ## Privacy
 
 No cloud STT/TTS is required and Nano does not use browser SpeechRecognition. Audio remains on the machine running Nano.
+
+
+## Autonomous check-ins
+
+The Talk page can speak proactive check-ins while the tab is open, visible, and idle. Enable **Autonomous talk** in Settings and configure the interval and prompt. This is off by default, requires the local model and Piper voice, and never requires cloud speech services. The browser does not continue speaking after the tab is closed.
