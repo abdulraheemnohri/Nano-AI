@@ -173,6 +173,11 @@ def health():
     s=status()
     return {"ok":True,"model_reachable":s["reachable"],"runtime":s,"voice":voice_status()}
 
+@app.get("/api/system/health")
+def system_health_api():
+    from .system_health import system_health
+    return system_health()
+
 @app.get("/api/ready")
 def ready():
     s=status()
