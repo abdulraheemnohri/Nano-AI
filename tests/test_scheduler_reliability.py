@@ -110,14 +110,14 @@ def test_job_timeout_records_error_and_schedules_retry(tmp_path, monkeypatch):
     from nano import core
 
     def slow_respond(*args):
-        _time.sleep(3)
+        _time.sleep(7)
         return "too late"
 
     monkeypatch.setattr(core, "respond", slow_respond)
-    job = create_job("Timeout test", "assistant_prompt", {"prompt": "Run"}, 3600, max_attempts=2, retry_delay_seconds=5, timeout_seconds=1)
+    job = create_job("Timeout test", "assistant_prompt", {"prompt": "Run"}, 3600, max_attempts=2, retry_delay_seconds=5, timeout_seconds=5)
     result = run_job(job)
     assert result["status"] == "retry_scheduled"
-    assert "timed out after 1 seconds" in result["error"]
+    assert "timed out after 5 seconds" in result["error"]
     current = list_jobs()[0]
     assert current["attempt_count"] == 1
     assert "JobTimeoutError" in current["last_error"]
