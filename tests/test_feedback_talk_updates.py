@@ -105,3 +105,49 @@ def test_feedback_api_and_autonomous_talk_opt_in(tmp_path, monkeypatch):
         result = client.post("/api/talk/proactive", json={})
         assert result.status_code == 200
         assert result.json()["answer"] == "A local check-in."
+
+
+def test_pre_update_database_snapshot_is_integrity_checked(tmp_path, monkeypatch):
+    import sqlite3
+    import nano.config as config
+    import nano.updates as updates
+
+    db_path = tmp_path / "nano.sqlite3"
+    with sqlite3.connect(db_path) as connection:
+        connection.execute("CREATE TABLE sample(value TEXT)")
+        connection.execute("INSERT INTO sample VALUES('preserve me')")
+    monkeypatch.setattr(config, "DB_PATH", db_path)
+    monkeypatch.setattr(config, "DATA_DIR", tmp_path / "data")
+    snapshot = updates._snapshot_database()
+    assert snapshot is not None
+    with sqlite3.connect(snapshot) as connection:
+        assert connection.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
+        assert connection.execute("SELECT value FROM sample").fetchone()[0] == "preserve me"
+
+
+def test_rollback_requires_explicit_approval():
+    from nano.updates import rollback_update
+    with pytest.raises(PermissionError):
+        rollback_update(False)
+
+
+def test_rollback_refuses_to_reset_if_head_moved(tmp_path, monkeypatch):
+    import json
+    import nano.config as config
+    import nano.updates as updates
+
+    root = tmp_path / "data"
+    recovery = root / "update-recovery"
+    recovery.mkdir(parents=True)
+    (recovery / "latest-update.json").write_text(json.dumps({
+        "previous_sha": "a" * 40,
+        "current_sha": "b" * 40,
+        "database_snapshot": None,
+    }))
+    monkeypatch.setattr(config, "DATA_DIR", root)
+    monkeypatch.setattr(updates, "_checkout", lambda: {
+        "branch": "main", "local_sha": "c" * 40, "dirty": False,
+        "origin": "https://github.com/abdulraheemnohri/Nano-AI.git",
+    })
+    with pytest.raises(RuntimeError, match="HEAD differs"):
+        updates.rollback_update(True)
