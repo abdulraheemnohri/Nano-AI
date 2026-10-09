@@ -100,6 +100,7 @@ Set a strong random token in `NANO_API_TOKEN`. The UI prompts for it when the AP
 - `NANO_TELEGRAM_WEBHOOK_SECRET`: validate inbound Telegram webhook updates at `POST /api/channels/telegram/webhook`.
 - `NANO_WEBHOOK_ALLOWED_HOSTS`: comma-separated allowlist for additional HTTPS webhook hosts. Slack and Discord webhook hosts are pre-allowed.
 - `pip install -e ".[browser]"` plus the matching Playwright browser installation enables guarded browser control. Set `NANO_BROWSER_ALLOWED_HOSTS` for additional sites.
+- `pip install -e ".[desktop]"` enables optional desktop control dependencies. Set `NANO_ENABLE_DESKTOP_CONTROL=true` to opt in on that machine; screenshot is read-only and input actions require approval.
 - `POST /mcp` exposes a minimal JSON-RPC MCP-style `tools/list` and `tools/call` interface over the enabled built-in tools.
 
 WhatsApp, email, full MCP transport variants, unrestricted terminal access, persistent browser sessions, and distributed multi-model agent swarms are not implemented in this version.
