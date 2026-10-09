@@ -50,7 +50,7 @@ async def protect_api(request: Request, call_next):
         content_length = request.headers.get("content-length")
         if content_length:
             try:
-                path_limit = 100 * 1024 * 1024 if request.url.path == "/api/restore" else max_request_bytes()
+                path_limit = (100 * 1024 * 1024 if request.url.path == "/api/restore" else 22 * 1024 * 1024 if request.url.path == "/api/voice/stt" else max_request_bytes())
                 if int(content_length) > path_limit:
                     return JSONResponse({"detail":"Request body exceeds configured size limit for this endpoint."},status_code=413)
             except ValueError:
@@ -616,13 +616,24 @@ def voice_api_status(): return voice_status()
 async def voice_stt(file:UploadFile=File(...)):
     if not bool_value("voice_enabled", True): raise HTTPException(403,"Voice is disabled in Settings.")
     if file.content_type not in {"audio/wav","audio/x-wav","audio/wave","application/octet-stream"}: raise HTTPException(415,"Upload a mono 16-bit WAV file.")
+    max_bytes = 20 * 1024 * 1024
     with NamedTemporaryFile(prefix="nano-stt-",suffix=".wav",delete=False) as tmp:
-        temp=Path(tmp.name); data=await file.read()
-        if len(data)>20*1024*1024: temp.unlink(missing_ok=True); raise HTTPException(413,"Audio file too large.")
-        temp.write_bytes(data)
-    try: return {"text":transcribe_wav(temp)}
-    except (ValueError,RuntimeError) as e: raise HTTPException(422,str(e))
-    finally: temp.unlink(missing_ok=True)
+        temp=Path(tmp.name)
+    size=0
+    try:
+        with temp.open("wb") as output:
+            while True:
+                chunk=await file.read(1024*1024)
+                if not chunk: break
+                size += len(chunk)
+                if size > max_bytes: raise HTTPException(413,"Audio file too large.")
+                output.write(chunk)
+        return {"text":transcribe_wav(temp)}
+    except (ValueError,RuntimeError) as e:
+        raise HTTPException(422,str(e))
+    finally:
+        await file.close()
+        temp.unlink(missing_ok=True)
 @app.get("/api/voice/tts")
 def voice_tts(text:str):
     if not bool_value("voice_enabled", True): raise HTTPException(403,"Voice is disabled in Settings.")
