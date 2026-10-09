@@ -130,9 +130,12 @@ def update_job(job_id, enabled):
 
 def retry_job(job_id):
     with connect() as c:
-        job = c.execute("SELECT id,enabled FROM scheduled_jobs WHERE id=?", (job_id,)).fetchone()
+        job = c.execute("SELECT id,enabled,claimed_at FROM scheduled_jobs WHERE id=?", (job_id,)).fetchone()
         if not job:
             raise KeyError("Scheduled job not found.")
+        running = c.execute("SELECT 1 FROM scheduled_runs WHERE job_id=? AND status='running' LIMIT 1", (job_id,)).fetchone()
+        if job["claimed_at"] or running:
+            raise ValueError("Scheduled job is already running; wait for the current attempt to finish.")
         c.execute(
             "UPDATE scheduled_jobs SET enabled=1,attempt_count=0,claimed_at=NULL,last_error=NULL,next_run_at=? WHERE id=?",
             (_now().isoformat(), job_id),
