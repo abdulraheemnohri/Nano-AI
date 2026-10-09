@@ -82,3 +82,10 @@ Use Nano AI as a **local-first assistant in a controlled, single-user environmen
 The CLI now includes `nano-ai doctor`, a read-only installation diagnostic. It checks Python compatibility, write access to configured data/model/skills directories, SQLite integrity and required tables when a database exists, remote binding authentication posture, LiteRT-LM CLI availability and endpoint reachability, and optional browser/voice readiness. It emits machine-readable JSON, marks critical failures, and returns a non-zero process exit only when a critical check fails.
 
 The doctor intentionally does not initialize a missing database, download models, install packages, alter settings, or start services. A missing/stopped model runtime is a warning, because the UI can start without inference available. Automated tests cover healthy local setup and remote binding without an API token. CI must be checked for the exact commit before this addition is considered verified.
+
+
+## Follow-up implementation — live system health dashboard
+
+The System page now exposes a **Refresh health** view backed by `GET /api/system/health`. The snapshot reports SQLite integrity and local record counts, LiteRT-LM endpoint status, scheduler worker status, scheduled-job counts and recent failed/interrupted attempts, plus optional Vosk/Piper readiness. A raw JSON view is included for troubleshooting. The endpoint is read-only and does not restart workers or repair or mutate data.
+
+Regression tests in `tests/test_system_health.py` cover record counts, recent task error visibility, and the rule that optional voice information alone does not downgrade overall health. The test workflow for commit `0f7bcdd0` passed. Documentation CI for the newest README update is still being checked separately.
