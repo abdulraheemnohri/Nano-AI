@@ -40,3 +40,32 @@ def test_text_extractor_keeps_nested_tags_inside_script_blocked():
     text = " ".join(parser.parts)
     assert "secret script text" not in text
     assert "Visible useful article text" in text
+
+
+def test_dns_validation_rejects_mixed_public_and_private_answers(monkeypatch):
+    import socket
+    import nano.research as research
+
+    def fake_getaddrinfo(host, port, type):
+        return [
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", port)),
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("127.0.0.1", port)),
+        ]
+
+    monkeypatch.setattr(research.socket, "getaddrinfo", fake_getaddrinfo)
+    with pytest.raises(ValueError, match="Private"):
+        research._validate_public_url("https://rebind.example/article")
+
+
+def test_research_blocks_nonstandard_https_ports():
+    with pytest.raises(ValueError, match="port"):
+        _validate_public_url("https://example.com:8443/article")
+
+
+def test_dns_public_addresses_are_pinned_for_tls_connection():
+    import nano.research as research
+    connection = research._PinnedHTTPSConnection("example.com", "93.184.216.34")
+    assert connection.host == "example.com"
+    assert connection._pinned_address == "93.184.216.34"
+    assert connection._tls_hostname == "example.com"
+    connection.close()
