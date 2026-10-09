@@ -71,3 +71,36 @@ def test_update_apply_requires_explicit_approval():
     from nano.updates import apply_update
     with pytest.raises(PermissionError):
         apply_update(False)
+
+
+def test_feedback_api_and_autonomous_talk_opt_in(tmp_path, monkeypatch):
+    import nano.config as config
+    import nano.db as db
+    import nano.app as app_module
+    from nano.settings import set_value
+    from fastapi.testclient import TestClient
+
+    path = tmp_path / "api.sqlite3"
+    monkeypatch.setattr(config, "DB_PATH", path)
+    monkeypatch.setattr(db, "DB_PATH", path)
+    set_value("autonomous_talk_enabled", "false")
+    with TestClient(app_module.app) as client:
+        conversation = client.post("/api/conversations", json={"title": "Feedback API"}).json()
+        feedback = client.post("/api/feedback", json={
+            "conversation_id": conversation["id"],
+            "user_text": "Explain this",
+            "assistant_text": "Here is an answer",
+            "rating": 1,
+            "correction": "Prefer bullet points",
+        })
+        assert feedback.status_code == 200
+        assert client.get("/api/learning/feedback-summary").json()["helpful"] == 1
+        assert client.post("/api/talk/proactive", json={}).status_code == 403
+
+        set_value("autonomous_talk_enabled", "true")
+        set_value("voice_enabled", "true")
+        set_value("auto_tts", "true")
+        monkeypatch.setattr(app_module, "generate_proactive_talk", lambda prompt: "A local check-in.")
+        result = client.post("/api/talk/proactive", json={})
+        assert result.status_code == 200
+        assert result.json()["answer"] == "A local check-in."
