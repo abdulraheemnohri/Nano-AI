@@ -20,7 +20,7 @@ def test_start_import_task_reports_running_and_completion(monkeypatch):
         release.wait(timeout=2)
         return model_id
 
-    monkeypatch.setattr(model_manager, "import_model", fake_import)
+    monkeypatch.setattr(model_manager, "_tracked_import", fake_import)
     with model_manager._AUTO_LOCK:
         model_manager._AUTO_STATE.update(status="idle", message="test", model_id=None)
     try:
