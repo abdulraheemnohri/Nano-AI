@@ -14,6 +14,8 @@ def _vosk_model():
     if not model.is_dir(): raise RuntimeError(f"Vosk model directory not found: {model}")
     return vosk.Model(str(model))
 def transcribe_wav(path):
+    if vosk is None:
+        raise RuntimeError("Vosk is not installed. Run: python -m pip install -r requirements-voice.txt")
     with wave.open(str(path),"rb") as wf:
         if wf.getnchannels()!=1 or wf.getsampwidth()!=2: raise ValueError("STT audio must be mono 16-bit PCM WAV.")
         rec=vosk.KaldiRecognizer(_vosk_model(),wf.getframerate()); parts=[]
