@@ -56,3 +56,12 @@ Audit scope: current `main` source tree. This inventory distinguishes implemente
 - **Autonomous talking:** opt-in local-model check-ins, configurable prompt and 10-1440 minute interval, only while the browser tab is visible and idle; local Piper TTS is required.
 - **GitHub update lifecycle:** read-only update check plus explicit approved fast-forward update, blocked on dirty worktrees or non-main branches and restricted to the expected official origin. Dependency installation and process restart remain manual.
 - **Validation:** tests cover feedback storage, correction retrieval, proactive-talk event logging, update checking, and the explicit-approval gate. Check the GitHub Actions result for the latest commit before release.
+
+
+## Update recovery lifecycle
+
+- The updater snapshots the current SQLite database using SQLite's online backup API and verifies the snapshot with `PRAGMA integrity_check` before changing code.
+- An atomic recovery manifest records the previous and new commit IDs, database snapshot path, and dependency files changed.
+- The System page offers a separately approved code rollback. Database restoration is a distinct opt-in checkbox with an additional destructive-action confirmation.
+- Rollback refuses dirty worktrees, non-main branches, missing/unreadable manifests, or a HEAD that no longer matches the recorded update.
+- Dependencies and service restart remain manual. These safeguards reduce risk but do not replace a separate verified backup and maintenance window.
