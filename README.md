@@ -164,3 +164,14 @@ Nano is local-first and does not require Firebase or cloud AI. Built-in tools ar
 ## Tests
 
     python -m pytest
+
+
+## Conversation improvement and autonomous talk
+
+Nano supports explicit per-answer feedback (helpful/not helpful plus an optional correction). Recent corrections are added to future model context as guidance, and the Learning page displays feedback totals. This is auditable local context adaptation, not silent model-weight training.
+
+Autonomous voice check-ins are disabled by default. In Settings, enable `autonomous_talk_enabled`, keep `voice_enabled` and `auto_tts` enabled, choose a 10-minute to 24-hour interval, and customize the prompt. Check-ins run only while the web UI is open, visible, and idle; they are logged in the local learning-event history.
+
+## GitHub update lifecycle
+
+The System page can check the official `abdulraheemnohri/Nano-AI` main branch. Applying an update requires explicit confirmation, a clean working tree, the main branch, and the expected official GitHub origin; updates are fast-forward-only. The updater does not install packages or restart the app. Review dependency changes, install them manually if required, and restart Nano AI after an update. Back up the database before updating.
