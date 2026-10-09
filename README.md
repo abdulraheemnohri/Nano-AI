@@ -72,9 +72,9 @@ Nano exposes a small, allowlisted tool registry through its local API:
 - `memory_search`: search saved memories.
 - `knowledge_search`: search locally imported knowledge.
 
-List tools with `GET /api/tools`. Execute a tool with `POST /api/tools/run`, using JSON such as `{"name":"calculator","arguments":{"expression":"(2+3)*4"}}`. Enable or disable one with `POST /api/tools/{name}/enabled?enabled=false`. Tool calls are logged to the local learning-event history. These endpoints are intended for the localhost-only UI/API; add authentication before exposing Nano to a network.
+List tools with `GET /api/tools`. Execute a tool with `POST /api/tools/run`, using JSON such as `{"name":"calculator","arguments":{"expression":"(2+3)*4"}}`. Enable or disable one with `POST /api/tools/{name}/enabled?enabled=false`. Tool calls are logged to the local learning-event history. The API is protected by an optional bearer token for local use and requires a configured token for remote access. Set `NANO_API_TOKEN` before exposing Nano; also use TLS and firewall controls.
 
-Tools do not run shell commands, arbitrary Python, browser automation, or external network requests.
+Built-in tools remain local and allowlisted. Optional restricted terminal and Playwright browser controls are available through the Automation & Agents page; they require explicit approvals and never provide arbitrary shell execution.
 
 ## Automatic model setup
 
@@ -83,6 +83,26 @@ Open the Model page and choose **Auto setup / download default model**. Nano che
 ## Project audit
 
 See [docs/A_TO_Z_AUDIT.md](docs/A_TO_Z_AUDIT.md) for an implementation inventory, known gaps, security constraints, and verification checklist. It explicitly separates shipped features from planned or partial capabilities.
+
+## Automation, agents, authentication, channels and MCP
+
+The **Automation & Agents** page provides persistent recurring assistant-prompt jobs, run history, specialist delegation, a fixed allowlisted terminal runner, optional Playwright browser actions, Telegram/webhook send controls, and an MCP tools-list tester. Scheduler jobs are stored in SQLite and require at least a 60-second interval. Specialist roles use the configured local model with different instructions; they are not separate distributed model instances.
+
+Model imports expose a progress percentage, current phase, and cancellation endpoint. Some LiteRT-LM CLI versions do not report true percentage progress; in that case Nano clearly marks its displayed percentage as an estimate. Cancel with `POST /api/models/auto-setup/cancel`.
+
+### Authentication and remote access
+
+Set a strong random token in `NANO_API_TOKEN`. The UI prompts for it when the API returns 401 and keeps it in the current browser tab's session storage. Use `Authorization: Bearer YOUR_TOKEN` or `X-Nano-Token: YOUR_TOKEN` for API clients. The CLI refuses non-loopback binding without this token; also configure TLS, firewall rules, and a reverse proxy appropriately.
+
+### Optional integrations
+
+- `NANO_TELEGRAM_BOT_TOKEN`: Telegram outbound messages.
+- `NANO_TELEGRAM_WEBHOOK_SECRET`: validate inbound Telegram webhook updates at `POST /api/channels/telegram/webhook`.
+- `NANO_WEBHOOK_ALLOWED_HOSTS`: comma-separated allowlist for additional HTTPS webhook hosts. Slack and Discord webhook hosts are pre-allowed.
+- `pip install -e ".[browser]"` plus the matching Playwright browser installation enables guarded browser control. Set `NANO_BROWSER_ALLOWED_HOSTS` for additional sites.
+- `POST /mcp` exposes a minimal JSON-RPC MCP-style `tools/list` and `tools/call` interface over the enabled built-in tools.
+
+WhatsApp, email, full MCP transport variants, unrestricted terminal access, persistent browser sessions, and distributed multi-model agent swarms are not implemented in this version.
 
 ## Development and tests
 
