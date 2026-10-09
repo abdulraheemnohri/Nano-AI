@@ -100,6 +100,14 @@ Audit scope: current `main` source tree. This inventory distinguishes implemente
 - Known non-goals/gaps remain: no multi-user tenancy/RBAC, no distributed scheduler, no unrestricted shell, no complete MCP transport/OAuth implementation, no native WhatsApp/email/Slack/Discord event adapters, no silent model-weight training, and no automatic dependency installation/restart during updates.
 
 
-## Final-review release blocker
+## Final-review release blocker — resolved
 
-- **Update rollback manifest serialization needs correction before release.** In nano/updates.py, _write_recovery_manifest currently appends a literal backslash followed by the letter n rather than an actual newline after the JSON document. That trailing text can make json.loads reject the manifest during rollback. Correct the writer to append an actual newline (source expression: json.dumps(manifest, indent=2) + "\n") and add a regression test that writes then reads the manifest. This issue was identified during final review but is not fixed in this revision; do not consider updater rollback release-ready until verified.
+- Fixed `_write_recovery_manifest` in `nano/updates.py` to append an actual newline after the JSON document instead of the literal two-character sequence `\\n`.
+- Added a regression test in `tests/test_final_review.py` that writes the recovery manifest, verifies the real trailing newline, rejects a literal backslash-n suffix, and parses the file with `json.loads`.
+- The updater rollback path is now covered for this serialization defect. This does not replace the documented recommendation to rehearse a full update/rollback cycle against a disposable Git checkout and representative database before production use.
+
+## Final release status
+
+- Current release posture: **feature-complete for the documented local-first scope, but not a claim of production certification**.
+- Run `python -m pip install -e ".[test]"` and `python -m pytest -q`; verify the latest GitHub Actions run before tagging a release.
+- Also complete environment-specific LiteRT-LM inference, optional voice/browser/desktop, backup/restore, Windows PowerShell, and remote-access security smoke tests on the actual target machine.
