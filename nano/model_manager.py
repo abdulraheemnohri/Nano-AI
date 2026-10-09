@@ -90,7 +90,7 @@ def _tracked_import(repo, filename, target):
         raise RuntimeError("litert-lm was not found. Install it with: python -m pip install -U litert-lm")
     command = [binary, "import", f"--from-huggingface-repo={repo}", filename, target]
     started = time.monotonic()
-    with tempfile.TemporaryFile(mode="w+t", encoding="utf-8", errors="replace") as log:
+    with tempfile.TemporaryFile(mode="w+b") as log:
         process = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT, text=True)
         with _AUTO_LOCK:
             _ACTIVE_PROCESS = process
@@ -106,7 +106,7 @@ def _tracked_import(repo, filename, target):
                     raise RuntimeError("Model import cancelled by user.")
                 log.flush()
                 log.seek(seen)
-                chunk = log.read()
+                chunk = log.read().decode("utf-8","replace")
                 seen = log.tell()
                 match = re.findall(r"(?<!\d)(\d{1,3})\s*%", chunk)
                 if match:
@@ -121,7 +121,7 @@ def _tracked_import(repo, filename, target):
                 raise RuntimeError("Model import cancelled by user.")
             log.flush()
             log.seek(max(0, os.fstat(log.fileno()).st_size - 5000))
-            tail = log.read()[-4000:]
+            tail = log.read()[-4000:].decode("utf-8","replace")
             if process.returncode:
                 raise RuntimeError(f"LiteRT-LM model import failed with exit code {process.returncode}. {tail}")
             _set_task(progress=100, phase="complete", message="Model import completed.")
