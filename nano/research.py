@@ -49,7 +49,7 @@ class _TextExtractor(HTMLParser):
             self.parts.append(text)
 
 
-def _validate_public_url(url):
+def _validate_public_url(url, return_addresses=False):
     parsed = urllib.parse.urlsplit(url)
     if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
         raise ValueError("Only public HTTPS URLs are allowed.")
@@ -64,7 +64,7 @@ def _validate_public_url(url):
     addresses = _resolve_public_addresses(host)
     if not addresses:
         raise ValueError("Could not resolve the public website host.")
-    return parsed
+    return (parsed, addresses) if return_addresses else parsed
 
 
 def _resolve_public_addresses(host):
@@ -100,9 +100,8 @@ def _open(url, timeout=12):
     current = url
     response = None
     for redirect_count in range(6):
-        parsed = _validate_public_url(current)
+        parsed, addresses = _validate_public_url(current, return_addresses=True)
         hostname = parsed.hostname.lower().rstrip(".")
-        addresses = _resolve_public_addresses(hostname)
         address = addresses[0]
         path = urllib.parse.urlunsplit(("", "", parsed.path or "/", parsed.query, ""))
         connection = _PinnedHTTPSConnection(hostname, address, timeout=timeout)
