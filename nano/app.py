@@ -30,6 +30,8 @@ from .mcp import handle_message
 app=FastAPI(title="Nano AI",version="0.5.0")
 @app.on_event("startup")
 def startup():
+    if not is_loopback_host(config.HOST) and not configured_token():
+        raise RuntimeError("Refusing remote API startup without NANO_API_TOKEN.")
     init_db()
     seed()
     start_scheduler()
