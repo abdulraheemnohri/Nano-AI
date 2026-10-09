@@ -21,7 +21,7 @@ from .web import HTML
 from .voice import transcribe_wav,speak,voice_status
 from .tools import list_tools, run_tool, set_enabled as set_tool_enabled
 from .security import configured_token, is_loopback_host, max_request_bytes, request_rate_allowed
-from .scheduler import start_scheduler, stop_scheduler, list_jobs, list_runs, create_job, update_job, delete_job
+from .scheduler import start_scheduler, stop_scheduler, list_jobs, list_runs, create_job, update_job, delete_job, retry_job
 from .agents import ROLES, delegate, delegate_many
 from .terminal import run_command
 from .browser import browser_action
@@ -101,6 +101,8 @@ class ScheduleIn(BaseModel):
     prompt:str = Field(min_length=1,max_length=8000)
     interval_seconds:int = Field(ge=60,le=31536000)
     enabled:bool = True
+    max_attempts:int = Field(default=3,ge=1,le=10)
+    retry_delay_seconds:int = Field(default=60,ge=5,le=3600)
 class AgentTaskIn(BaseModel):
     role:str
     task:str = Field(min_length=1,max_length=8000)
@@ -483,7 +485,7 @@ def scheduler_jobs(): return list_jobs()
 
 @app.post("/api/scheduler/jobs")
 def scheduler_create(x:ScheduleIn):
-    try: return create_job(x.name,x.job_type,{"prompt":x.prompt},x.interval_seconds,x.enabled)
+    try: return create_job(x.name,x.job_type,{"prompt":x.prompt},x.interval_seconds,x.enabled,x.max_attempts,x.retry_delay_seconds)
     except ValueError as e: raise HTTPException(400,str(e))
 
 @app.patch("/api/scheduler/jobs/{job_id}")
