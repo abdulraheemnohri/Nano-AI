@@ -168,7 +168,7 @@ Nano is local-first and does not require Firebase or cloud AI. Built-in tools ar
 
 ## Conversation improvement and autonomous talk
 
-Nano supports explicit per-answer feedback (helpful/not helpful plus an optional correction). Recent corrections are added to future model context as guidance, and the Learning page displays feedback totals. This is auditable local context adaptation, not silent model-weight training.
+Nano supports explicit per-answer feedback (helpful/not helpful plus an optional correction). Recent corrections are added to future model context as guidance, and the Learning page displays feedback totals. This is auditable local context adaptation, not silent model-weight training. The Learning page also reports explicit-feedback rates and a 7-day comparison; these are descriptive user ratings, not proof that model quality objectively improved. The report is available at GET /api/learning/quality.
 
 Autonomous voice check-ins are disabled by default. In Settings, enable `autonomous_talk_enabled`, keep `voice_enabled` and `auto_tts` enabled, choose a 10-minute to 24-hour interval, and customize the prompt. Check-ins run only while the web UI is open, visible, and idle; they are logged in the local learning-event history.
 
