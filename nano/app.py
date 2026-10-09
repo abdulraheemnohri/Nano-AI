@@ -49,8 +49,9 @@ async def protect_api(request: Request, call_next):
         content_length = request.headers.get("content-length")
         if content_length:
             try:
-                if int(content_length) > max_request_bytes():
-                    return JSONResponse({"detail":"Request body exceeds configured size limit."},status_code=413)
+                path_limit = 100 * 1024 * 1024 if request.url.path == "/api/restore" else max_request_bytes()
+                if int(content_length) > path_limit:
+                    return JSONResponse({"detail":"Request body exceeds configured size limit for this endpoint."},status_code=413)
             except ValueError:
                 return JSONResponse({"detail":"Invalid Content-Length header."},status_code=400)
         peer_for_limit = request.client.host if request.client else "unknown"
@@ -293,7 +294,7 @@ async def restore_database(file: UploadFile = File(...)):
 
         recovery_dir = config.DB_PATH.parent / "recovery"
         recovery_dir.mkdir(parents=True, exist_ok=True)
-        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
         recovery_path = recovery_dir / f"pre-restore-{stamp}.sqlite3"
         current = None
         try:
