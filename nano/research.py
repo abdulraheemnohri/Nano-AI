@@ -19,19 +19,21 @@ class _TextExtractor(HTMLParser):
     def __init__(self):
         super().__init__(convert_charrefs=True)
         self.parts = []
-        self.blocked = 0
+        self.blocked_tags = []
         self.title = []
         self.in_title = False
 
     def handle_starttag(self, tag, attrs):
-        if self.blocked or tag in self.BLOCKED:
-            self.blocked += 1
+        if tag in self.BLOCKED:
+            self.blocked_tags.append(tag)
         if tag == "title":
             self.in_title = True
 
     def handle_endtag(self, tag):
-        if tag in self.BLOCKED and self.blocked:
-            self.blocked -= 1
+        if tag in self.BLOCKED and tag in self.blocked_tags:
+            # Remove the matching blocked element without unblocking its parent.
+            index = len(self.blocked_tags) - 1 - self.blocked_tags[::-1].index(tag)
+            self.blocked_tags.pop(index)
         if tag == "title":
             self.in_title = False
         if tag in {"p", "div", "br", "li", "h1", "h2", "h3", "article", "section"}:
@@ -43,7 +45,7 @@ class _TextExtractor(HTMLParser):
             return
         if self.in_title:
             self.title.append(text)
-        if not self.blocked:
+        if not self.blocked_tags:
             self.parts.append(text)
 
 
