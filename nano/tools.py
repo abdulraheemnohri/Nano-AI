@@ -99,7 +99,7 @@ def unit_convert(value, from_unit, to_unit):
 def text_stats(text):
     if not isinstance(text, str) or len(text) > MAX_INPUT_CHARS:
         raise ValueError(f"text must be a string up to {MAX_INPUT_CHARS} characters")
-    return {"characters": len(text), "characters_without_spaces": len(re.sub(r"\\s", "", text)), "words": len(re.findall(r"\\b\\w+\\b", text, re.UNICODE)), "lines": len(text.splitlines()) if text else 0, "sentences": len(re.findall(r"[.!?]+(?=\\s|$)", text))}
+    return {"characters": len(text), "characters_without_spaces": len(re.sub(r"\s", "", text)), "words": len(re.findall(r"\b\w+\b", text, re.UNICODE)), "lines": len(text.splitlines()) if text else 0, "sentences": len(re.findall(r"[.!?]+(?=\s|$)", text))}
 
 
 def run_tool(name, arguments):
