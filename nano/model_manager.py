@@ -78,10 +78,11 @@ def _auto_setup_worker():
 
 
 def start_auto_setup():
+    # Treat queued and running as active so rapid clicks cannot launch concurrent imports.
     with _AUTO_LOCK:
-        if _AUTO_STATE["status"] == "running":
+        if _AUTO_STATE["status"] in {"queued", "running"}:
             return dict(_AUTO_STATE)
         _AUTO_STATE.update(status="queued", message="Model setup queued.", model_id=config.LITERT_MODEL)
-    thread = threading.Thread(target=_auto_setup_worker, name="nano-model-setup", daemon=True)
-    thread.start()
-    return auto_setup_status()
+        thread = threading.Thread(target=_auto_setup_worker, name="nano-model-setup", daemon=True)
+        thread.start()
+        return dict(_AUTO_STATE)
