@@ -175,3 +175,8 @@ Autonomous voice check-ins are disabled by default. In Settings, enable `autonom
 ## GitHub update lifecycle
 
 The System page can check the official `abdulraheemnohri/Nano-AI` main branch. Applying an update requires explicit confirmation, a clean working tree, the main branch, and the expected official GitHub origin; updates are fast-forward-only. The updater does not install packages or restart the app. Review dependency changes, install them manually if required, and restart Nano AI after an update. Back up the database before updating.
+
+
+### Update recovery and rollback
+
+The System page's GitHub updater now creates an integrity-checked SQLite snapshot before applying a fast-forward update and records a recovery manifest with the previous/current commit and dependency manifest changes. The UI can roll code back to the recorded previous commit after explicit confirmation. Restoring the pre-update database is a separate, additional confirmation because it overwrites current data. Rollback requires the clean `main` branch and the exact recorded updated HEAD; it refuses to reset if the checkout has moved. Review and back up current data before recovery. Package installation and restart remain manual.
