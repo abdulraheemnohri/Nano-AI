@@ -33,5 +33,5 @@ def test_text_stats_counts_words_and_whitespace():
     result = text_stats("Hello world.\nNano AI!")
     assert result["words"] == 4
     assert result["lines"] == 2
-    assert result["characters_without_spaces"] == 19
+    assert result["characters_without_spaces"] == 18
     assert result["sentences"] == 2
