@@ -69,10 +69,14 @@ def _number(node):
 def calculator(expression):
     if not isinstance(expression, str) or not expression.strip() or len(expression) > 300:
         raise ValueError("Provide an arithmetic expression up to 300 characters.")
-    tree = ast.parse(expression, mode="eval")
-    if sum(1 for _ in ast.walk(tree)) > MAX_EXPR_NODES:
-        raise ValueError("Expression is too complex.")
-    return {"expression": expression, "result": _number(tree.body)}
+    try:
+        tree = ast.parse(expression, mode="eval")
+        if sum(1 for _ in ast.walk(tree)) > MAX_EXPR_NODES:
+            raise ValueError("Expression is too complex.")
+        result = _number(tree.body)
+    except (SyntaxError, ZeroDivisionError, OverflowError) as exc:
+        raise ValueError("Invalid arithmetic expression or undefined operation.") from exc
+    return {"expression": expression, "result": result}
 
 
 def unit_convert(value, from_unit, to_unit):
