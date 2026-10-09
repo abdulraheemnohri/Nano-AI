@@ -74,6 +74,29 @@ def test_api_requires_configured_token(tmp_path, monkeypatch):
         assert response.status_code == 200
 
 
+def test_voice_upload_can_exceed_default_json_body_limit_and_is_streamed(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+    import nano.app as app_module
+    import nano.config as cfg
+    import nano.db as dbm
+
+    database = tmp_path / "voice-upload.sqlite3"
+    monkeypatch.setattr(cfg, "DB_PATH", database)
+    monkeypatch.setattr(dbm, "DB_PATH", database)
+    monkeypatch.delenv("NANO_API_TOKEN", raising=False)
+    monkeypatch.setattr(app_module, "transcribe_wav", lambda path: "recognized")
+    payload = b"RIFF" + b"x" * (1536 * 1024)
+
+    with TestClient(app_module.app) as client:
+        response = client.post(
+            "/api/voice/stt",
+            files={"file": ("sample.wav", payload, "audio/wav")},
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {"text": "recognized"}
+    assert not list(tmp_path.glob("nano-stt-*"))
+
 def test_request_size_and_rate_protection_are_configurable(monkeypatch):
     monkeypatch.setenv("NANO_MAX_REQUEST_BYTES", "32768")
     monkeypatch.setenv("NANO_RATE_LIMIT_PER_MINUTE", "10")
