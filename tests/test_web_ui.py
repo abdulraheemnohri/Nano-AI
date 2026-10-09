@@ -51,3 +51,31 @@ def test_polish_ui_wiring():
     assert "install_dependencies:$('installUpdateDeps').checked" in html
     assert "api('/api/learning/events?limit=50&offset='+learnOffset)" in html
     assert "api('/api/knowledge?limit=50&offset='+knowledgeOffset)" in html
+
+
+def test_embedded_web_javascript_parses_with_node():
+    import shutil
+    import subprocess
+
+    import pytest
+
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("Node.js is not installed; JavaScript syntax check is optional locally")
+    match = re.search(r"<script>(.*?)</script>", web.HTML, flags=re.DOTALL)
+    assert match, "The web UI must include its application script"
+    result = subprocess.run(
+        [node, "--check", "-"],
+        input=match.group(1),
+        text=True,
+        capture_output=True,
+        timeout=15,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr or result.stdout
+
+
+def test_web_ui_keeps_core_navigation_and_system_health_controls():
+    html = web.HTML
+    for expected in ("data-p='talk'", "data-p='settings'", "id='send'", "id='systemHealthSummary'", "id='refreshSystemHealth'"):
+        assert expected in html
