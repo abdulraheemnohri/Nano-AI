@@ -10,7 +10,7 @@ from . import config
 from .db import init_db,rows,run
 from .core import respond, generate_proactive_talk
 from .memory import search,forget,clear
-from .learning import events, save_response_feedback, feedback_summary
+from .learning import events, save_response_feedback, feedback_summary, quality_report
 from .knowledge import ingest,recent
 from .skills import seed,list_all,set_enabled,proposals,accept,reject
 from .settings import public,set_value,reset,schema as settings_schema,int_value,bool_value
@@ -210,6 +210,8 @@ def delete_memories(): clear(); return {"ok":True}
 def learning_events(): return events(100)
 @app.get("/api/learning/feedback-summary")
 def learning_feedback_summary(): return feedback_summary()
+@app.get("/api/learning/quality")
+def learning_quality_report(): return quality_report()
 @app.post("/api/feedback")
 def response_feedback(x:FeedbackIn):
     if x.rating not in (-1,1): raise HTTPException(400,"rating must be 1 or -1")
