@@ -1,6 +1,7 @@
 from pathlib import Path
 import sqlite3
 from tempfile import NamedTemporaryFile
+from datetime import datetime, timezone
 from fastapi import FastAPI,HTTPException,UploadFile,File,Request
 from fastapi.responses import HTMLResponse,FileResponse,JSONResponse
 from starlette.background import BackgroundTask
@@ -248,6 +249,94 @@ def backup_database():
         backup_path.unlink(missing_ok=True)
         raise HTTPException(500, "Could not create a consistent database backup.") from exc
 
+
+
+@app.post("/api/restore")
+async def restore_database(file: UploadFile = File(...)):
+    """Validate an uploaded SQLite backup, preserve a recovery snapshot, then restore via SQLite backup."""
+    max_bytes = 100 * 1024 * 1024
+    filename = (file.filename or "").lower()
+    if not filename.endswith((".sqlite", ".sqlite3", ".db")):
+        raise HTTPException(400, "Upload a .sqlite, .sqlite3, or .db backup file.")
+    config.DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with NamedTemporaryFile(prefix="nano-restore-candidate-", suffix=".sqlite3", delete=False) as tmp:
+        candidate = Path(tmp.name)
+    size = 0
+    try:
+        with candidate.open("wb") as output:
+            while True:
+                chunk = await file.read(1024 * 1024)
+                if not chunk:
+                    break
+                size += len(chunk)
+                if size > max_bytes:
+                    raise HTTPException(413, "Backup exceeds the 100 MB restore limit.")
+                output.write(chunk)
+        if size == 0:
+            raise HTTPException(400, "Uploaded backup is empty.")
+        try:
+            check = sqlite3.connect(f"file:{candidate.as_posix()}?mode=ro", uri=True, timeout=10)
+            try:
+                integrity = check.execute("PRAGMA integrity_check").fetchone()
+                if not integrity or integrity[0] != "ok":
+                    raise HTTPException(400, "Backup failed SQLite integrity_check.")
+                tables = {row[0] for row in check.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+                required = {"conversations", "messages", "memories", "settings", "skills"}
+                if not required.issubset(tables):
+                    raise HTTPException(400, "Backup is not a compatible Nano AI database.")
+            finally:
+                check.close()
+        except sqlite3.DatabaseError as exc:
+            raise HTTPException(400, "Uploaded file is not a valid SQLite database.") from exc
+
+        recovery_dir = config.DB_PATH.parent / "recovery"
+        recovery_dir.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        recovery_path = recovery_dir / f"pre-restore-{stamp}.sqlite3"
+        current = None
+        try:
+            if config.DB_PATH.exists():
+                current = sqlite3.connect(str(config.DB_PATH), timeout=10)
+                recovery = sqlite3.connect(str(recovery_path), timeout=10)
+                try:
+                    current.backup(recovery)
+                finally:
+                    recovery.close()
+                    current.close()
+                    current = None
+            source = sqlite3.connect(f"file:{candidate.as_posix()}?mode=ro", uri=True, timeout=10)
+            destination = sqlite3.connect(str(config.DB_PATH), timeout=10)
+            try:
+                source.backup(destination)
+                result = destination.execute("PRAGMA integrity_check").fetchone()
+                if not result or result[0] != "ok":
+                    raise sqlite3.DatabaseError("Restored database failed integrity_check.")
+            finally:
+                source.close()
+                destination.close()
+        except Exception as exc:
+            if current is not None:
+                current.close()
+            if recovery_path.exists():
+                try:
+                    recovery = sqlite3.connect(f"file:{recovery_path.as_posix()}?mode=ro", uri=True, timeout=10)
+                    rollback = sqlite3.connect(str(config.DB_PATH), timeout=10)
+                    try:
+                        recovery.backup(rollback)
+                    finally:
+                        recovery.close()
+                        rollback.close()
+                except sqlite3.Error:
+                    pass
+            if isinstance(exc, HTTPException):
+                raise
+            raise HTTPException(500, "Restore failed; Nano attempted rollback using the recovery snapshot.") from exc
+        return {"ok": True, "restored_bytes": size,
+                "recovery_backup": recovery_path.name if recovery_path.exists() else None,
+                "message": "Restore completed and passed SQLite integrity_check."}
+    finally:
+        await file.close()
+        candidate.unlink(missing_ok=True)
 
 @app.get("/api/export")
 def export_data():
