@@ -151,3 +151,36 @@ def test_rollback_refuses_to_reset_if_head_moved(tmp_path, monkeypatch):
     })
     with pytest.raises(RuntimeError, match="HEAD differs"):
         updates.rollback_update(True)
+
+
+
+def test_quality_report_counts_feedback_and_reports_descriptive_rates(tmp_path, monkeypatch):
+    from nano.learning import quality_report
+
+    cid = configure_db(tmp_path, monkeypatch)
+    save_response_feedback(cid, "Q1", "A1", 1)
+    save_response_feedback(cid, "Q2", "A2", -1, "Add a concrete example.")
+    save_response_feedback(cid, "Q3", "A3", 1)
+
+    report = quality_report()
+    assert report["total"] == 3
+    assert report["helpful"] == 2
+    assert report["unhelpful"] == 1
+    assert report["corrections"] == 1
+    assert report["helpful_rate_percent"] == 66.7
+    assert report["correction_rate_percent"] == 33.3
+    assert report["last_7_days"] == 3
+    assert report["last_7_days_helpful_rate_percent"] == 66.7
+    assert report["daily"] and sum(day["total"] for day in report["daily"]) == 3
+
+
+def test_quality_report_handles_no_feedback_without_division_by_zero(tmp_path, monkeypatch):
+    configure_db(tmp_path, monkeypatch)
+    from nano.learning import quality_report
+
+    report = quality_report()
+    assert report["total"] == 0
+    assert report["helpful_rate_percent"] is None
+    assert report["correction_rate_percent"] is None
+    assert report["helpful_rate_change_percentage_points"] is None
+    assert report["daily"] == []
