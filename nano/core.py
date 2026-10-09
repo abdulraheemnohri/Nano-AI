@@ -108,6 +108,33 @@ def respond(conversation_id, user_text):
 
 
 
+def regenerate(conversation_id):
+    """Regenerate the last assistant answer without duplicating the user message."""
+    from .db import rows, run
+    if not rows("SELECT id FROM conversations WHERE id=?", (conversation_id,)):
+        raise ValueError("Conversation not found")
+    last_user = rows(
+        "SELECT id,content FROM messages WHERE conversation_id=? AND role='user' ORDER BY id DESC LIMIT 1",
+        (conversation_id,),
+    )
+    if not last_user:
+        raise ValueError("No user message available to regenerate from")
+    last_user = last_user[0]
+    run(
+        "DELETE FROM messages WHERE conversation_id=? AND role='assistant' AND id>?",
+        (conversation_id, last_user["id"]),
+    )
+    history = rows(
+        "SELECT role,content FROM messages WHERE conversation_id=? AND id<? ORDER BY id DESC LIMIT ?",
+        (conversation_id, last_user["id"], int_value("max_history", 12)),
+    )
+    history.reverse()
+    answer = chat(history, last_user["content"], build_context(last_user["content"]))
+    run("INSERT INTO messages(conversation_id,role,content) VALUES(?,?,?)", (conversation_id, "assistant", answer))
+    run("UPDATE conversations SET updated_at=CURRENT_TIMESTAMP WHERE id=?", (conversation_id,))
+    return answer
+
+
 def generate_proactive_talk(prompt):
     """Generate a short local check-in without inventing completed background work."""
     from .db import run

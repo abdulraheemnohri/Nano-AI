@@ -125,3 +125,10 @@ Audit scope: current `main` source tree. This inventory distinguishes implemente
 - `nano/runtime.py` now records an `endpoint_error` reason (connection refusal, HTTP status, or a parse failure) and exposes `model_readiness(runtime)`, a shared classifier for model readiness.
 - `nano-ai doctor` and the live System health page now distinguish three states: endpoint unreachable (start hint: `nano-ai litert-lm`), endpoint reachable but the configured model is not served or the registry is empty (import hint: `nano-ai download-model`), and endpoint reachable with the configured model served (ok).
 - Regression coverage lives in `tests/test_doctor.py` and `tests/test_system_health.py`. These are mocked endpoint tests; they are not evidence of real LiteRT-LM inference on a target machine.
+
+## Conversation management completion (Feature 3)
+
+- Added `regenerate()` in `nano/core.py` and `POST /api/chat/regenerate`: it removes the latest assistant answer and re-runs the model on the last user message without duplicating it.
+- Added `GET /api/conversations/search?q=` for bounded message search across conversations (LIKE with escaped wildcards, limit 1-100) and `GET /api/conversations/{cid}/export` for single-conversation JSON export.
+- The Talk UI now includes conversation search, Regenerate, Rename, Delete (with confirmation), and Export controls wired to the real APIs.
+- Automated coverage: `tests/test_conversations_api.py` (regeneration, search, export, and error cases). UI id references are guarded by `tests/test_web_ui.py`.
