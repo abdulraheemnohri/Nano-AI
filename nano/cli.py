@@ -1,7 +1,10 @@
 import argparse
 import json
 import shutil
+import socket
 import subprocess
+import urllib.error
+import urllib.request
 from . import config
 from .db import init_db
 from .model_manager import info,import_model
@@ -11,6 +14,26 @@ MODEL_REPO="litert-community/Qwen3-1.7B"
 MODEL_FILE="Qwen3-1.7B_dynamic_wi4b32_afp32.litertlm"
 
 def litert_binary(): return shutil.which("litert-lm") or shutil.which("litert-lm.exe")
+
+def endpoint_responds(url, timeout=1.0):
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as response:
+            return response.status == 200
+    except (OSError, urllib.error.URLError, TimeoutError, ValueError):
+        return False
+
+
+def port_is_open(host, port, timeout=0.35):
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True
+    except OSError:
+        return False
+
+
+def display_host(host):
+    return f"[{host}]" if ":" in host and not host.startswith("[") else host
+
 
 def main():
     p=argparse.ArgumentParser(prog="nano-ai",description="Nano AI local Qwen3 assistant")
@@ -35,10 +58,23 @@ def main():
         import os
         if a.host not in {"127.0.0.1","localhost","::1"} and not os.getenv("NANO_API_TOKEN","").strip():
             raise SystemExit("Refusing remote bind without authentication. Set a strong NANO_API_TOKEN first.")
-        import uvicorn; uvicorn.run("nano.app:app",host=a.host,port=a.port)
+        base=f"http://{display_host(a.host)}:{a.port}"
+        if endpoint_responds(base+"/api/system"):
+            print(f"Nano AI web server is already responding at {base}; leaving the existing process running.")
+            return
+        if port_is_open(a.host,a.port):
+            raise SystemExit(f"Port {a.port} on {a.host} is already in use by another service. Inspect it with: ss -ltnp 'sport = :{a.port}'")
+        import uvicorn
+        uvicorn.run("nano.app:app",host=a.host,port=a.port)
     elif a.cmd=="litert-lm":
         b=litert_binary()
         if not b: raise SystemExit("litert-lm was not found. Install it with: python -m pip install -U litert-lm")
+        base=f"http://{display_host(a.host)}:{a.port}"
+        if endpoint_responds(base+"/v1/models"):
+            print(f"LiteRT-LM endpoint is already responding at {base}; model service will not be started twice.")
+            return
+        if port_is_open(a.host,a.port):
+            raise SystemExit(f"Port {a.port} on {a.host} is already in use, but LiteRT-LM did not answer at {base}/v1/models. Inspect it with: ss -ltnp 'sport = :{a.port}'")
         cmd=[b,"serve","--host",a.host,"--port",str(a.port)]
         if a.verbose: cmd.append("--verbose")
         subprocess.run(cmd,check=True)
