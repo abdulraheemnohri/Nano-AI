@@ -1,49 +1,47 @@
-# Nano-AI A-to-Z Feature Audit
+# Nano AI A-to-Z Feature Audit
 
-Audit scope: current `main` source tree. This document distinguishes shipped code from partial workflows and planned work; it is not a claim that every feature has passed runtime testing.
+Audit scope: current `main` source tree. This inventory distinguishes implemented code from constrained integrations and remaining production gaps. Source presence is not proof of a passing runtime test suite.
 
-## Implemented in the repository
+## Implemented capabilities
 
-| Area | Current capability | Key files / API |
+| Area | Capability | Key files / endpoints |
 |---|---|---|
-| Chat | Conversations, message history, local LiteRT-LM OpenAI-compatible endpoint | `nano/core.py`, `nano/model.py`, `/api/chat` |
-| Local data | SQLite-backed conversations, memories, knowledge and learning events | `nano/db.py`, `nano/memory.py`, `nano/knowledge.py` |
-| Skills | Seeded skills, enable/disable, proposal and approval flow | `nano/skills.py`, `/api/skills` |
-| Local tools | Allowlisted calculator, datetime, unit conversion, text statistics, memory and knowledge search | `nano/tools.py`, `/api/tools` |
-| Model management | Runtime status, registry listing, validated imports, user-triggered default setup, background custom import status | `nano/model_manager.py`, `/api/models` |
-| Web research | HTTPS search, bounded readable-page extraction, local knowledge ingestion, private-host checks | `nano/research.py`, `/api/research` |
+| Chat and history | SQLite conversations, messages, model-backed responses | `nano/core.py`, `nano/db.py`, `/api/chat` |
+| Local data | Memories, knowledge ingestion/search, learning event history | `nano/memory.py`, `nano/knowledge.py`, `nano/learning.py` |
+| Skills | Enabled skills and proposal approval/rejection | `nano/skills.py`, `/api/skills` |
+| Built-in tools | Bounded calculator, time, unit conversion, text stats, memory/knowledge search | `nano/tools.py`, `/api/tools` |
+| Model management | Validated background import, cancellation endpoint, phase/progress status | `nano/model_manager.py`, `/api/models/auto-setup`, `/api/models/import-task/cancel` |
+| Scheduler | Persistent interval jobs, enable/pause/delete, run history; assistant-prompt jobs only | `nano/scheduler.py`, `/api/scheduler/jobs`, `/api/scheduler/runs` |
+| Delegation | Researcher/coder/planner/reviewer/writer specialist prompts, bounded task size and timeout | `nano/agents.py`, `/api/agents/delegate` |
+| Authentication | Bearer token / X-Nano-Token, remote peer guard, CLI remote-bind guard | `nano/security.py`, `nano/app.py`, `nano/cli.py` |
+| Terminal | Fixed command allowlist, no shell, workspace path guard, per-action approval | `nano/terminal.py`, `/api/terminal/run` |
+| Browser | Optional Playwright inspect/click/fill, host allowlist, approval for click/fill | `nano/browser.py`, `/api/browser/action` |
+| Messaging | Telegram send + secret-validated inbound webhook, HTTPS Slack/Discord/custom webhook delivery | `nano/messaging.py`, `/api/channels/*` |
+| MCP | Minimal JSON-RPC `initialize`, `ping`, `tools/list`, and `tools/call` over HTTP | `nano/mcp.py`, `POST /mcp` |
+| Research | HTTPS search, bounded readable-page extraction and local ingestion | `nano/research.py`, `/api/research` |
 | Voice | Optional local Vosk transcription and Piper speech synthesis | `nano/voice.py`, `/api/voice` |
-| Settings | Validated persisted settings and reset | `nano/settings.py`, `/api/settings` |
-| Data portability | JSON export and consistent SQLite snapshot download | `/api/export`, `/api/backup` |
-| Web UI | Talk, memory, learning, skills, knowledge, tools, model, settings, system and research pages | `nano/web.py` |
-| Packaging | Python package/CLI, optional voice/test extras, GitHub Actions test workflow | `pyproject.toml`, `.github/workflows/` |
+| Portability | JSON export and consistent SQLite backup snapshot | `/api/export`, `/api/backup` |
+| UI | Talk, memory, learning, skills, tools, knowledge, research, model, automation/agents, settings and system | `nano/web.py` |
 
-## Recent workflow completion
+## Important limitations
 
-- The Model page submits custom model imports to `POST /api/models/import-task` instead of holding the browser request open while LiteRT-LM imports the model.
-- The page polls `GET /api/models/auto-setup` for task state and refreshes model information on completion.
-- Settings includes a direct SQLite backup download link.
-- `tests/test_model_import_task.py` covers validation and the queued/running/completion lifecycle.
-- `tests/test_backup.py` covers a valid snapshot and missing database behavior.
-
-## Partial or missing; do not advertise as implemented
-
-1. **Authentication and remote access:** API has no built-in user authentication. Keep both Nano and LiteRT-LM on loopback; do not expose the API to a LAN or public network without an authentication/TLS layer.
-2. **Model import cancellation/progress percentage:** status is coarse-grained; there is no cancellation endpoint or percentage based on CLI progress.
-3. **Web research network pinning:** DNS validation and redirect checks exist, but a hardened pinned-IP HTTP transport against DNS rebinding is not implemented.
-4. **Restore workflow:** a consistent backup can be downloaded and checked, but in-app restore/rollback is not implemented. Restore manually while the service is stopped and retain the old database.
-5. **Browser automation:** readable HTML extraction is implemented; JavaScript-capable browsing, login sessions, and computer control are not.
-6. **Autonomous scheduling/agents:** no general background agent scheduler, multi-agent delegation, terminal executor, or device control is implemented.
-7. **Cloud/channel integrations:** no mandatory cloud service; Telegram, WhatsApp, Discord, Slack, email, and MCP channel integrations are not implemented.
-8. **Model compatibility:** LiteRT-LM is the supported inference path; arbitrary runtimes/providers are not interchangeable without adapters.
-9. **Production operations:** no built-in multi-user tenancy, audit-grade access control, secret vault, or production deployment hardening.
-10. **Verification:** source-level presence does not mean all tests passed. Run `python -m pip install -e ".[test]"` and `python -m pytest -q` in a clean environment; verify GitHub Actions before release.
+1. **Progress fidelity:** LiteRT-LM releases do not expose a consistent progress protocol. Nano parses percentages when present; otherwise it shows a clearly labelled estimate, not verified download bytes.
+2. **Delegation semantics:** specialist agents currently use the same configured model with different role prompts. Batch delegation is bounded and sequential; this is not a distributed multi-model swarm.
+3. **Terminal scope:** the terminal runner is intentionally read-oriented and allowlisted. It does not provide unrestricted shell access, arbitrary scripts, sudo, or destructive commands.
+4. **Computer control:** Playwright is optional; host allowlisting is required for non-local websites. Browser sessions are short-lived and not a persistent logged-in desktop session.
+5. **Messaging scope:** Telegram requires a bot token and webhook secret. Generic outgoing webhook delivery is supported for Slack/Discord or explicitly allowlisted HTTPS hosts. WhatsApp, email, Discord bot events, Slack event ingestion, and persistent channel polling are not implemented.
+6. **MCP compatibility:** this is a minimal JSON-RPC HTTP endpoint, not a complete implementation of every MCP transport/version or OAuth flow.
+7. **Research network pinning:** robust pinned-IP transport against DNS rebinding remains a hardening task.
+8. **Restore workflow:** backup download exists; in-app restore/rollback is not implemented.
+9. **Production operations:** no multi-user tenancy, roles/permissions, secret vault, distributed scheduler, job retry policy, or audit-grade authorization.
+10. **Verification:** run `python -m pip install -e ".[test]"` and `python -m pytest -q`; confirm GitHub Actions before release. This change set has not been represented as runtime-tested unless a CI result confirms it.
 
 ## Security and recovery checklist
 
-- Keep `NANO_HOST=127.0.0.1` and LiteRT-LM bound to `127.0.0.1`.
-- Treat web research results and imported knowledge as untrusted reference text.
-- Review skill proposals before enabling them.
-- Download backups regularly and validate with `PRAGMA integrity_check`.
-- Before manual restore, stop Nano, copy the current database, replace it with a verified snapshot, then restart and check `/api/health`.
-- Do not run arbitrary commands or scripts suggested by model output.
+- Keep `NANO_HOST=127.0.0.1` unless remote access is intentional.
+- Set a strong `NANO_API_TOKEN` before remote binding; configure TLS and firewall rules too.
+- Keep `NANO_LITERT_URL` on loopback.
+- Review scheduled prompts and skill proposals before enabling them.
+- Require explicit approval for terminal/browser actions.
+- Treat imported web pages and model output as untrusted.
+- Download backups regularly and verify them with `PRAGMA integrity_check`.
