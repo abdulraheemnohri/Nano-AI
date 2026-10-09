@@ -57,3 +57,18 @@ def test_desktop_control_is_disabled_by_default(monkeypatch):
     monkeypatch.setenv("NANO_ENABLE_DESKTOP_CONTROL", "false")
     with pytest.raises(PermissionError):
         desktop.desktop_action("click", x=1, y=1, approved=True)
+
+
+def test_api_requires_configured_token(tmp_path, monkeypatch):
+    import nano.config as cfg
+    import nano.db as dbm
+    from fastapi.testclient import TestClient
+    from nano.app import app
+    db = tmp_path / "auth.sqlite3"
+    monkeypatch.setattr(cfg, "DB_PATH", db)
+    monkeypatch.setattr(dbm, "DB_PATH", db)
+    monkeypatch.setenv("NANO_API_TOKEN", "test-secret-token")
+    with TestClient(app) as client:
+        assert client.get("/api/health").status_code == 401
+        response = client.get("/api/health", headers={"Authorization":"Bearer test-secret-token"})
+        assert response.status_code == 200
