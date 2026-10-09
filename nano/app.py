@@ -1,7 +1,7 @@
 from pathlib import Path
 import sqlite3
 from tempfile import NamedTemporaryFile
-from fastapi import FastAPI,HTTPException,UploadFile,File
+from fastapi import FastAPI,HTTPException,UploadFile,File,Request
 from fastapi.responses import HTMLResponse,FileResponse,JSONResponse
 from starlette.background import BackgroundTask
 from pydantic import BaseModel, Field
@@ -14,15 +14,43 @@ from .knowledge import ingest,recent
 from .skills import seed,list_all,set_enabled,proposals,accept,reject
 from .settings import public,set_value,reset
 from .runtime import status,installed_models,registry_models
-from .model_manager import info,import_model,start_auto_setup,auto_setup_status,start_import_task
+from .model_manager import info,import_model,start_auto_setup,auto_setup_status,start_import_task,cancel_import_task
 from .research import search_web,research_and_learn
 from .web import HTML
 from .voice import transcribe_wav,speak,voice_status
 from .tools import list_tools, run_tool, set_enabled as set_tool_enabled
+from .security import configured_token, is_loopback_host
+from .scheduler import start_scheduler, list_jobs, list_runs, create_job, update_job, delete_job
+from .agents import ROLES, delegate, delegate_many
+from .terminal import run_command
+from .browser import browser_action
+from .messaging import telegram_send, webhook_send
+from .mcp import handle_message
 
 app=FastAPI(title="Nano AI",version="0.5.0")
 @app.on_event("startup")
-def startup(): init_db(); seed()
+def startup():
+    init_db()
+    seed()
+    start_scheduler()
+
+@app.middleware("http")
+async def protect_api(request: Request, call_next):
+    if request.url.path.startswith("/api/") or request.url.path == "/mcp":
+        token = configured_token()
+        peer = request.client.host if request.client else ""
+        remote_request = not is_loopback_host(peer)
+        required = bool(token) or remote_request or not is_loopback_host(config.HOST)
+        supplied = request.headers.get("authorization", "")
+        if supplied.lower().startswith("bearer "):
+            supplied = supplied[7:].strip()
+        else:
+            supplied = request.headers.get("x-nano-token", "")
+        if required and not token:
+            return JSONResponse({"detail":"Remote API access is disabled until NANO_API_TOKEN is configured."},status_code=503)
+        if token and (not supplied or not __import__("hmac").compare_digest(supplied,token)):
+            return JSONResponse({"detail":"Missing or invalid API token. Use Authorization: Bearer <token>."},status_code=401)
+    return await call_next(request)
 
 class ChatIn(BaseModel): conversation_id:int=1; message:str
 class SettingIn(BaseModel): key:str; value:str
@@ -31,6 +59,36 @@ class ConversationIn(BaseModel): title:str="New conversation"
 class SkillProposalIn(BaseModel): name:str; description:str; prompt:str
 class ModelImportIn(BaseModel): repo:str; filename:str; model_id:str|None=None
 class ToolRunIn(BaseModel): name:str; arguments:dict
+class ScheduleIn(BaseModel):
+    name:str = Field(min_length=1,max_length=100)
+    job_type:str = "assistant_prompt"
+    prompt:str = Field(min_length=1,max_length=8000)
+    interval_seconds:int = Field(ge=60,le=31536000)
+    enabled:bool = True
+class AgentTaskIn(BaseModel):
+    role:str
+    task:str = Field(min_length=1,max_length=8000)
+    timeout_seconds:int = Field(default=180,ge=5,le=300)
+class AgentBatchIn(BaseModel):
+    tasks:list[AgentTaskIn] = Field(min_length=1,max_length=4)
+    timeout_seconds:int = Field(default=180,ge=5,le=300)
+class TerminalIn(BaseModel):
+    command:str
+    args:list[str] = Field(default_factory=list,max_length=10)
+    timeout:int = Field(default=15,ge=1,le=30)
+    approved:bool = False
+class BrowserIn(BaseModel):
+    action:str
+    url:str = Field(min_length=1,max_length=2048)
+    selector:str|None = None
+    value:str|None = None
+    approved:bool = False
+class TelegramSendIn(BaseModel):
+    chat_id:str = Field(min_length=1,max_length=100)
+    text:str = Field(min_length=1,max_length=4000)
+class WebhookSendIn(BaseModel):
+    url:str = Field(min_length=1,max_length=2048)
+    text:str = Field(min_length=1,max_length=12000)
 
 @app.get("/",response_class=HTMLResponse)
 def home(): return HTML
@@ -193,6 +251,10 @@ def model_auto_setup():
 
 @app.get("/api/models/auto-setup")
 def model_auto_setup_status(): return auto_setup_status()
+
+@app.post("/api/models/auto-setup/cancel")
+@app.post("/api/models/import-task/cancel")
+def model_import_cancel(): return cancel_import_task()
 @app.post("/api/models/import-task")
 def model_import_task(x:ModelImportIn):
     try:
@@ -210,6 +272,69 @@ def model_import(x:ModelImportIn):
         raise HTTPException(400, str(e))
     except RuntimeError as e:
         raise HTTPException(503, str(e))
+
+@app.get("/api/scheduler/jobs")
+def scheduler_jobs(): return list_jobs()
+
+@app.post("/api/scheduler/jobs")
+def scheduler_create(x:ScheduleIn):
+    try: return create_job(x.name,x.job_type,{"prompt":x.prompt},x.interval_seconds,x.enabled)
+    except ValueError as e: raise HTTPException(400,str(e))
+
+@app.patch("/api/scheduler/jobs/{job_id}")
+def scheduler_enable(job_id:int, enabled:bool=True):
+    try: return update_job(job_id,enabled)
+    except KeyError as e: raise HTTPException(404,str(e))
+
+@app.delete("/api/scheduler/jobs/{job_id}")
+def scheduler_delete(job_id:int): return delete_job(job_id)
+
+@app.get("/api/scheduler/runs")
+def scheduler_runs(job_id:int|None=None,limit:int=100): return list_runs(job_id,limit)
+
+@app.get("/api/agents")
+def agents_list(): return [{"role":name,"description":prompt} for name,prompt in ROLES.items()]
+
+@app.post("/api/agents/delegate")
+def agents_delegate(x:AgentTaskIn):
+    try: return delegate(x.role,x.task,x.timeout_seconds)
+    except ValueError as e: raise HTTPException(400,str(e))
+
+@app.post("/api/agents/delegate-batch")
+def agents_delegate_batch(x:AgentBatchIn):
+    try: return delegate_many([t.model_dump() for t in x.tasks],x.timeout_seconds)
+    except ValueError as e: raise HTTPException(400,str(e))
+
+@app.post("/api/terminal/run")
+def terminal_run(x:TerminalIn):
+    if not x.approved: raise HTTPException(403,"Explicit approval is required to run a terminal command.")
+    try: return run_command(x.command,x.args,x.timeout)
+    except ValueError as e: raise HTTPException(400,str(e))
+
+@app.post("/api/browser/action")
+def browser_control(x:BrowserIn):
+    try: return browser_action(x.action,x.url,x.selector,x.value,x.approved)
+    except ValueError as e: raise HTTPException(400,str(e))
+    except PermissionError as e: raise HTTPException(403,str(e))
+    except RuntimeError as e: raise HTTPException(503,str(e))
+
+@app.post("/api/channels/telegram/send")
+def telegram_send_api(x:TelegramSendIn):
+    try: return telegram_send(x.chat_id,x.text)
+    except ValueError as e: raise HTTPException(400,str(e))
+    except RuntimeError as e: raise HTTPException(502,str(e))
+
+@app.post("/api/channels/webhook/send")
+def webhook_send_api(x:WebhookSendIn):
+    try: return webhook_send(x.url,x.text)
+    except ValueError as e: raise HTTPException(400,str(e))
+    except RuntimeError as e: raise HTTPException(502,str(e))
+
+@app.post("/mcp")
+def mcp_endpoint(message:dict):
+    response = handle_message(message)
+    if response is None: return JSONResponse({},status_code=202)
+    return response
 
 @app.get("/api/system")
 def system(): return {"version":"0.5.0","host":config.HOST,"port":config.PORT,"runtime":status(),"voice":voice_status(),"paths":{"data":str(config.DATA_DIR),"models":str(config.MODEL_DIR),"skills":str(config.SKILLS_DIR),"database":str(config.DB_PATH)}}
