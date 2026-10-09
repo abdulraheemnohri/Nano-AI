@@ -3,7 +3,7 @@ from tempfile import NamedTemporaryFile
 from fastapi import FastAPI,HTTPException,UploadFile,File
 from fastapi.responses import HTMLResponse,FileResponse,JSONResponse
 from starlette.background import BackgroundTask
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from . import config
 from .db import init_db,rows,run
 from .core import respond
@@ -99,8 +99,12 @@ def skill_enabled(name:str,enabled:bool=True):
 @app.get("/api/knowledge")
 def knowledge(): return recent(100)
 
-class WebSearchIn(BaseModel): query:str; limit:int=8
-class WebLearnIn(BaseModel): url:str; label:str|None=None
+class WebSearchIn(BaseModel):
+    query: str = Field(min_length=1, max_length=300)
+    limit: int = Field(default=8, ge=1, le=10)
+class WebLearnIn(BaseModel):
+    url: str = Field(min_length=1, max_length=2048)
+    label: str | None = Field(default=None, max_length=100)
 
 @app.post("/api/research/search")
 def research_search(x:WebSearchIn):
