@@ -6,6 +6,7 @@ import re
 import time
 import tempfile
 import os
+import json
 from . import config
 from .runtime import registry_models, litert_lm_binary
 
@@ -77,10 +78,34 @@ _AUTO_LOCK = threading.Lock()
 _AUTO_STATE = {"status": "idle", "message": "Model setup has not been started.", "model_id": None, "progress": 0, "phase": "idle", "cancel_requested": False}
 _ACTIVE_PROCESS = None
 _CANCEL_EVENT = threading.Event()
+_STATE_FILE = config.DATA_DIR / "model-import-state.json"
+
+def _persist_state_locked():
+    try:
+        _STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        temporary = _STATE_FILE.with_suffix(".tmp")
+        temporary.write_text(json.dumps(_AUTO_STATE, ensure_ascii=False), encoding="utf-8")
+        temporary.replace(_STATE_FILE)
+    except OSError:
+        # Task execution should not fail just because optional status persistence is unavailable.
+        pass
+
+try:
+    if _STATE_FILE.is_file():
+        _saved = json.loads(_STATE_FILE.read_text(encoding="utf-8"))
+        if isinstance(_saved, dict) and _saved.get("status") in {"queued", "running"}:
+            _AUTO_STATE.update(_saved)
+            _AUTO_STATE.update(status="interrupted", phase="interrupted",
+                               message="The previous model import was interrupted by process restart. Check the LiteRT-LM registry, then retry if needed.")
+        elif isinstance(_saved, dict):
+            _AUTO_STATE.update({key: value for key, value in _saved.items() if key in _AUTO_STATE})
+except (OSError, ValueError, TypeError):
+    pass
 
 def _set_task(**values):
     with _AUTO_LOCK:
         _AUTO_STATE.update(values)
+        _persist_state_locked()
 
 def _tracked_import(repo, filename, target):
     """Run import with cancellable process management and best-effort progress reporting."""
@@ -91,7 +116,8 @@ def _tracked_import(repo, filename, target):
     command = [binary, "import", f"--from-huggingface-repo={repo}", filename, target]
     started = time.monotonic()
     with tempfile.TemporaryFile(mode="w+b") as log:
-        process = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT, text=True)
+        launch_options = {"start_new_session": True} if os.name != "nt" else {"creationflags": getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)}
+        process = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT, text=True, **launch_options)
         with _AUTO_LOCK:
             _ACTIVE_PROCESS = process
         seen = 0
@@ -145,6 +171,7 @@ def cancel_import_task():
 
 def auto_setup_status():
     with _AUTO_LOCK:
+        _persist_state_locked()
         return dict(_AUTO_STATE)
 
 
@@ -185,6 +212,7 @@ def start_auto_setup():
             return dict(_AUTO_STATE)
         _CANCEL_EVENT.clear()
         _AUTO_STATE.update(status="queued", message="Model setup queued.", model_id=config.LITERT_MODEL, progress=0, phase="queued", cancel_requested=False)
+        _persist_state_locked()
         thread = threading.Thread(target=_auto_setup_worker, name="nano-model-setup", daemon=True)
         thread.start()
         return dict(_AUTO_STATE)
@@ -198,6 +226,7 @@ def start_import_task(repo, filename, model_id=None):
             raise RuntimeError("A model setup/import task is already active.")
         _CANCEL_EVENT.clear()
         _AUTO_STATE.update(status="queued", message=f"Custom model import queued for {target}.", model_id=target, progress=0, phase="queued", cancel_requested=False)
+        _persist_state_locked()
         thread = threading.Thread(
             target=_custom_import_worker,
             args=(repo, filename, target),
