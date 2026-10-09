@@ -25,7 +25,7 @@ def _explicit_tool_request(text):
     """Only dispatch tools for clear, explicit user commands; otherwise use the model."""
     value = text.strip()
     patterns = [
-        (r"^(?:calculate|compute|what is)\s+(.+?)\s*[?。！!]*$", "calculator", "expression"),
+        (r"^(?:calculate|compute)\s+(.+?)\s*[?。！!]*$", "calculator", "expression"),
         (r"^(?:convert)\s+(-?\d+(?:\.\d+)?)\s+([a-zA-Z°]+)\s+(?:to|into)\s+([a-zA-Z°]+)\s*[?。！!]*$", "unit_convert", None),
         (r"^(?:what(?:'s| is) the )?(?:current )?(?:date and time|time now|current time|today's date)\??$", "datetime_now", None),
         (r"^(?:search|find) (?:my )?memory for\s+(.+)$", "memory_search", "query"),
