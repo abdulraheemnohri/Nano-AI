@@ -87,8 +87,8 @@ def run_checks():
         voice = voice_status()
         checks.append(_check(
             "optional voice",
-            "ok" if voice.get("available") else "info",
-            "Voice dependencies/assets are available." if voice.get("available") else "Voice is optional; check voice settings and local Vosk/Piper assets if needed.",
+            "ok" if voice.get("stt", {}).get("ready") or voice.get("tts", {}).get("ready") else "info",
+            "At least one offline voice path is ready." if voice.get("stt", {}).get("ready") or voice.get("tts", {}).get("ready") else "Voice is optional; configure local Vosk/Piper dependencies and assets if needed.",
         ))
     except Exception:
         checks.append(_check("optional voice", "info", "Voice diagnostics unavailable; core Nano AI can run without optional voice dependencies."))
