@@ -1,6 +1,7 @@
-"""Restricted terminal actions. Never invokes a shell or accepts arbitrary commands."""
+"""Restricted, cross-platform terminal actions. Never invokes a shell or accepts arbitrary commands."""
 import os
 import subprocess
+import sys
 from pathlib import Path
 from . import config
 
@@ -9,7 +10,7 @@ MAX_OUTPUT = 12000
 
 def _safe_path(value):
     raw = str(value or ".")
-    if "\x00" in raw or Path(raw).is_absolute() or any(p == ".." for p in Path(raw).parts):
+    if "\\x00" in raw or Path(raw).is_absolute() or any(p == ".." for p in Path(raw).parts):
         raise ValueError("Paths must be relative to the configured workspace and cannot traverse upward.")
     target = (WORKSPACE / raw).resolve()
     if target != WORKSPACE and WORKSPACE not in target.parents:
@@ -22,25 +23,36 @@ def run_command(name, args=None, timeout=15):
         raise ValueError("args must be a list of at most 10 short strings.")
     if isinstance(timeout,bool) or not isinstance(timeout,int) or not 1 <= timeout <= 30:
         raise ValueError("timeout must be between 1 and 30 seconds.")
-    cwd = WORKSPACE
-    if name in {"pwd","python-version","pip-version"} and not args:
-        argv = {"pwd":["pwd"],"python-version":[os.sys.executable,"--version"],"pip-version":[os.sys.executable,"-m","pip","--version"]}[name]
-    elif name == "ls" and len(args)<=1:
+    if name == "pwd" and not args:
+        return {"command":name,"status":"complete","returncode":0,"stdout":str(WORKSPACE),"stderr":""}
+    if name == "ls" and len(args)<=1:
         target = _safe_path(args[0] if args else ".")
-        argv = ["ls","-la",str(target)]
-    elif name == "git-status" and not args:
-        argv = ["git","status","--short","--branch"]
-    elif name == "git-log" and not args:
-        argv = ["git","log","-5","--oneline"]
-    elif name == "git-diff" and not args:
-        argv = ["git","diff","--stat"]
-    elif name == "pytest" and args in ([],["-q"]):
-        argv = [os.sys.executable,"-m","pytest","-q"]
+        if not target.exists() or not target.is_dir():
+            raise ValueError("The selected path is not an existing directory.")
+        entries=[]
+        for item in sorted(target.iterdir(),key=lambda p:p.name.lower())[:500]:
+            try: size=item.stat().st_size if item.is_file() else 0
+            except OSError: size=0
+            entries.append(("d " if item.is_dir() else "f ")+item.name+(f" ({size} bytes)" if item.is_file() else ""))
+        return {"command":name,"status":"complete","returncode":0,"stdout":"\\n".join(entries),"stderr":""}
+    commands = {
+        "git-status": ["git","status","--short","--branch"],
+        "git-log": ["git","log","-5","--oneline"],
+        "git-diff": ["git","diff","--stat"],
+        "python-version": [sys.executable,"--version"],
+        "pip-version": [sys.executable,"-m","pip","--version"],
+    }
+    if name == "pytest" and args in ([],["-q"]):
+        argv=[sys.executable,"-m","pytest","-q"]
+    elif name in commands and not args:
+        argv=commands[name]
     else:
         raise ValueError("Command is not allowlisted. Allowed: pwd, ls [relative-path], git-status, git-log, git-diff, python-version, pip-version, pytest [-q].")
     try:
-        proc = subprocess.run(argv,cwd=str(cwd),capture_output=True,text=True,timeout=timeout,
+        proc = subprocess.run(argv,cwd=str(WORKSPACE),capture_output=True,text=True,timeout=timeout,
                               shell=False,check=False)
+    except FileNotFoundError as exc:
+        return {"command":name,"status":"error","returncode":127,"stdout":"","stderr":f"Required executable not found: {argv[0]}"}
     except subprocess.TimeoutExpired:
         return {"command":name,"status":"timeout","returncode":None,"stdout":"","stderr":f"Command exceeded {timeout} seconds."}
     return {"command":name,"status":"complete" if proc.returncode==0 else "error",
