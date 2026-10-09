@@ -150,6 +150,9 @@ def auto_setup_status():
 
 def _auto_setup_worker():
     try:
+        if _CANCEL_EVENT.is_set():
+            _set_task(status="cancelled",message="Model setup cancelled before starting.",phase="cancelled",cancel_requested=True)
+            return
         with _AUTO_LOCK:
             _AUTO_STATE.update(status="running", message="Checking LiteRT-LM and model registry.", model_id=config.LITERT_MODEL, progress=2, phase="checking", cancel_requested=False)
         binary = litert_lm_binary()
@@ -169,7 +172,9 @@ def _auto_setup_worker():
                 _AUTO_STATE.update(status="complete", message="Model import command completed. Check runtime status before chatting.", model_id=imported, progress=100, phase="complete")
     except Exception as exc:
         with _AUTO_LOCK:
-            if _AUTO_STATE["status"] != "cancelled":
+            if _CANCEL_EVENT.is_set():
+                _AUTO_STATE.update(status="cancelled", message="Model setup cancelled by user.", phase="cancelled", cancel_requested=True)
+            elif _AUTO_STATE["status"] != "cancelled":
                 _AUTO_STATE.update(status="error", message=str(exc)[:500], model_id=config.LITERT_MODEL, phase="error")
 
 
@@ -205,6 +210,9 @@ def start_import_task(repo, filename, model_id=None):
 
 def _custom_import_worker(repo, filename, target):
     try:
+        if _CANCEL_EVENT.is_set():
+            _set_task(status="cancelled",message="Model import cancelled before starting.",phase="cancelled",cancel_requested=True)
+            return
         with _AUTO_LOCK:
             _AUTO_STATE.update(status="running", message=f"Importing {repo}/{filename}. This may take a while.", model_id=target, progress=5, phase="importing", cancel_requested=False)
         if _CANCEL_EVENT.is_set(): raise RuntimeError("Model import cancelled by user.")
@@ -214,5 +222,7 @@ def _custom_import_worker(repo, filename, target):
                 _AUTO_STATE.update(status="complete", message="Custom model import command completed. Check runtime status before chatting.", model_id=imported, progress=100, phase="complete")
     except Exception as exc:
         with _AUTO_LOCK:
-            if _AUTO_STATE["status"] != "cancelled":
+            if _CANCEL_EVENT.is_set():
+                _AUTO_STATE.update(status="cancelled", message="Model import cancelled by user.", model_id=target, phase="cancelled", cancel_requested=True)
+            elif _AUTO_STATE["status"] != "cancelled":
                 _AUTO_STATE.update(status="error", message=str(exc)[:500], model_id=target, phase="error")
