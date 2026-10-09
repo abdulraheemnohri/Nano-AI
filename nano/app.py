@@ -19,7 +19,7 @@ from .research import search_web,research_and_learn
 from .web import HTML
 from .voice import transcribe_wav,speak,voice_status
 from .tools import list_tools, run_tool, set_enabled as set_tool_enabled
-from .security import configured_token, is_loopback_host
+from .security import configured_token, is_loopback_host, max_request_bytes, request_rate_allowed
 from .scheduler import start_scheduler, stop_scheduler, list_jobs, list_runs, create_job, update_job, delete_job
 from .agents import ROLES, delegate, delegate_many
 from .terminal import run_command
@@ -43,7 +43,19 @@ def shutdown():
 
 @app.middleware("http")
 async def protect_api(request: Request, call_next):
-    if (request.url.path.startswith("/api/") or request.url.path == "/mcp") and request.url.path != "/api/channels/telegram/webhook":
+    is_api = request.url.path.startswith("/api/") or request.url.path == "/mcp"
+    if is_api:
+        content_length = request.headers.get("content-length")
+        if content_length:
+            try:
+                if int(content_length) > max_request_bytes():
+                    return JSONResponse({"detail":"Request body exceeds configured size limit."},status_code=413)
+            except ValueError:
+                return JSONResponse({"detail":"Invalid Content-Length header."},status_code=400)
+        peer_for_limit = request.client.host if request.client else "unknown"
+        if not request_rate_allowed(peer_for_limit):
+            return JSONResponse({"detail":"Request rate limit exceeded. Try again shortly."},status_code=429)
+    if is_api and request.url.path != "/api/channels/telegram/webhook":
         token = configured_token()
         peer = request.client.host if request.client else ""
         remote_request = bool(peer) and peer not in {"testclient", "localhost", "::ffff:127.0.0.1"} and not is_loopback_host(peer)
