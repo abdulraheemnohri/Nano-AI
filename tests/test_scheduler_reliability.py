@@ -102,3 +102,31 @@ def test_manual_retry_refuses_to_duplicate_an_active_run(tmp_path, monkeypatch):
 
     with pytest.raises(ValueError, match="already running"):
         retry_job(job["id"])
+
+
+def test_job_timeout_records_error_and_schedules_retry(tmp_path, monkeypatch):
+    setup_scheduler_db(tmp_path, monkeypatch)
+    import time as _time
+    from nano import core
+
+    def slow_respond(*args):
+        _time.sleep(3)
+        return "too late"
+
+    monkeypatch.setattr(core, "respond", slow_respond)
+    job = create_job("Timeout test", "assistant_prompt", {"prompt": "Run"}, 3600, max_attempts=2, retry_delay_seconds=5, timeout_seconds=1)
+    result = run_job(job)
+    assert result["status"] == "retry_scheduled"
+    assert "timed out after 1 seconds" in result["error"]
+    current = list_jobs()[0]
+    assert current["attempt_count"] == 1
+    assert "JobTimeoutError" in current["last_error"]
+    assert list_runs(job["id"])[0]["status"] == "error"
+
+
+def test_job_timeout_validation_and_default(tmp_path, monkeypatch):
+    setup_scheduler_db(tmp_path, monkeypatch)
+    with pytest.raises(ValueError, match="timeout_seconds"):
+        create_job("Bad timeout", "assistant_prompt", {"prompt": "Run"}, 3600, timeout_seconds=0)
+    job = create_job("Default timeout", "assistant_prompt", {"prompt": "Run"}, 3600)
+    assert job["timeout_seconds"] == 300

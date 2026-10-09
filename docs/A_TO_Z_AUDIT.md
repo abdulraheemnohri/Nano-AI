@@ -119,3 +119,24 @@ Audit scope: current `main` source tree. This inventory distinguishes implemente
 - It reports JSON, warns when the model endpoint is unavailable, and exits non-zero for critical failures such as remote binding without an API token or an invalid database.
 - It does not initialize the database, install dependencies, fetch models, alter settings, or start services.
 - Automated coverage: `tests/test_doctor.py` checks the healthy local setup and the remote-binding authentication guard.
+
+## Model readiness diagnostics (Phase 2 improvement)
+
+- `nano/runtime.py` now records an `endpoint_error` reason (connection refusal, HTTP status, or a parse failure) and exposes `model_readiness(runtime)`, a shared classifier for model readiness.
+- `nano-ai doctor` and the live System health page now distinguish three states: endpoint unreachable (start hint: `nano-ai litert-lm`), endpoint reachable but the configured model is not served or the registry is empty (import hint: `nano-ai download-model`), and endpoint reachable with the configured model served (ok).
+- Regression coverage lives in `tests/test_doctor.py` and `tests/test_system_health.py`. These are mocked endpoint tests; they are not evidence of real LiteRT-LM inference on a target machine.
+
+## Conversation management completion (Feature 3)
+
+- Added `regenerate()` in `nano/core.py` and `POST /api/chat/regenerate`: it removes the latest assistant answer and re-runs the model on the last user message without duplicating it.
+- Added `GET /api/conversations/search?q=` for bounded message search across conversations (LIKE with escaped wildcards, limit 1-100) and `GET /api/conversations/{cid}/export` for single-conversation JSON export.
+- The Talk UI now includes conversation search, Regenerate, Rename, Delete (with confirmation), and Export controls wired to the real APIs.
+- Automated coverage: `tests/test_conversations_api.py` (regeneration, search, export, and error cases). UI id references are guarded by `tests/test_web_ui.py`.
+
+
+## Per-job hard timeout and served-vs-registry model UI (Phase 3 improvement)
+
+- Scheduled jobs now have a per-job `timeout_seconds` column (default 300, range 5-86400, migration-safe via ALTER TABLE). The model request runs in a daemon worker thread; if it exceeds the timeout, the attempt is recorded as an error (`JobTimeoutError`) and the existing bounded retry policy applies. The abandoned worker thread is not forcibly killed; it dies with the process. This closes the single-process part of the former "no forcibly cancellable per-job timeout" gap; the scheduler remains single-process by design.
+- API: `POST /api/scheduler/jobs` accepts `timeout_seconds`; the Automation & Agents UI exposes a run-timeout field and shows each job's timeout.
+- The Model page now renders served models (from the running LiteRT-LM endpoint) separately from registry models (`litert-lm list`), highlighting the configured model, instead of raw JSON only.
+- Coverage: `tests/test_scheduler_reliability.py` (timeout error, retry scheduling, validation, default) and UI id guards in `tests/test_web_ui.py`.

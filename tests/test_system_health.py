@@ -42,6 +42,7 @@ def test_system_health_returns_read_only_live_counts_and_task_errors(tmp_path, m
     assert checks["database"]["counts"]["messages"] == 1
     assert checks["database"]["counts"]["active_memories"] == 1
     assert checks["model"]["status"] == "ok"
+    assert checks["model"]["model_loaded"] is True
     assert checks["background_tasks"]["jobs_total"] == 1
     assert checks["background_tasks"]["recent_errors"][0]["error"] == "RuntimeError: test failure"
 
@@ -60,3 +61,23 @@ def test_system_health_does_not_treat_optional_voice_as_a_failure(tmp_path, monk
     assert report["overall"] == "ok"
     voice = next(item for item in report["checks"] if item["name"] == "voice")
     assert voice["status"] == "info"
+
+
+def test_system_health_warns_when_endpoint_has_no_served_model(tmp_path, monkeypatch):
+    _setup_health_db(tmp_path, monkeypatch)
+    monkeypatch.setattr(
+        system_health, "runtime_status",
+        lambda: {
+            "reachable": True, "binary": True,
+            "configured_url": "http://127.0.0.1:9379",
+            "model": "test-model", "models": ["unrelated-model"],
+        },
+    )
+
+    report = system_health.system_health()
+
+    model = next(item for item in report["checks"] if item["name"] == "model")
+    assert model["status"] == "warn"
+    assert model["model_loaded"] is False
+    assert "nano-ai download-model" in model["detail"]
+    assert report["read_only"] is True

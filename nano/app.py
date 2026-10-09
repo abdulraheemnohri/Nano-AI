@@ -8,13 +8,13 @@ from starlette.background import BackgroundTask
 from pydantic import BaseModel, Field
 from . import config
 from .db import init_db,rows,run
-from .core import respond, generate_proactive_talk
+from .core import respond, generate_proactive_talk, regenerate
 from .memory import search,forget,clear,find_duplicate_candidates,create_consolidation_proposals,list_consolidation_proposals,approve_consolidation,reject_consolidation
 from .learning import events, save_response_feedback, feedback_summary, quality_report
 from .knowledge import ingest,recent
 from .skills import seed,list_all,set_enabled,proposals,accept,reject
 from .settings import public,set_value,reset,schema as settings_schema,int_value,bool_value
-from .runtime import status,installed_models,registry_models
+from .runtime import status,installed_models,registry_models,model_readiness
 from .model_manager import info,import_model,start_auto_setup,auto_setup_status,start_import_task,cancel_import_task
 from .research import search_web,research_and_learn
 from .web import HTML
@@ -92,6 +92,7 @@ class UpdateRollbackIn(BaseModel):
 class SettingIn(BaseModel): key:str; value:str
 class KnowledgeIn(BaseModel): text:str; source:str="local"
 class ConversationIn(BaseModel): title:str="New conversation"
+class RegenerateIn(BaseModel): conversation_id:int=Field(ge=1)
 class SkillProposalIn(BaseModel): name:str; description:str; prompt:str
 class ModelImportIn(BaseModel): repo:str; filename:str; model_id:str|None=None
 class ToolRunIn(BaseModel): name:str; arguments:dict
@@ -103,6 +104,7 @@ class ScheduleIn(BaseModel):
     enabled:bool = True
     max_attempts:int = Field(default=3,ge=1,le=10)
     retry_delay_seconds:int = Field(default=60,ge=5,le=3600)
+    timeout_seconds:int = Field(default=300,ge=1,le=86400)
 class AgentTaskIn(BaseModel):
     role:str
     task:str = Field(min_length=1,max_length=8000)
@@ -171,7 +173,8 @@ def system_update_rollback(x:UpdateRollbackIn):
 @app.get("/api/health")
 def health():
     s=status()
-    return {"ok":True,"model_reachable":s["reachable"],"runtime":s,"voice":voice_status()}
+    readiness=model_readiness(s)
+    return {"ok":True,"model_reachable":s["reachable"],"model_ready":readiness["status"]=="ok","model_readiness":readiness,"runtime":s,"voice":voice_status()}
 
 @app.get("/api/system/health")
 def system_health_api():
@@ -181,8 +184,9 @@ def system_health_api():
 @app.get("/api/ready")
 def ready():
     s=status()
-    ready_ok=bool(s["reachable"])
-    payload={"ready":ready_ok,"model_reachable":s["reachable"],"runtime":s}
+    readiness=model_readiness(s)
+    ready_ok=readiness["status"]=="ok"
+    payload={"ready":ready_ok,"model_reachable":s["reachable"],"model_ready":ready_ok,"model_readiness":readiness,"runtime":s}
     if not ready_ok:
         return JSONResponse(payload,status_code=503)
     return payload
@@ -490,7 +494,7 @@ def scheduler_jobs(): return list_jobs()
 
 @app.post("/api/scheduler/jobs")
 def scheduler_create(x:ScheduleIn):
-    try: return create_job(x.name,x.job_type,{"prompt":x.prompt},x.interval_seconds,x.enabled,x.max_attempts,x.retry_delay_seconds)
+    try: return create_job(x.name,x.job_type,{"prompt":x.prompt},x.interval_seconds,x.enabled,x.max_attempts,x.retry_delay_seconds,x.timeout_seconds)
     except ValueError as e: raise HTTPException(400,str(e))
 
 @app.patch("/api/scheduler/jobs/{job_id}")
@@ -609,6 +613,26 @@ def conversation_delete(cid:int):
 def messages(cid:int):
     if not rows("SELECT id FROM conversations WHERE id=?",(cid,)): raise HTTPException(404,"Conversation not found")
     return rows("SELECT * FROM messages WHERE conversation_id=? ORDER BY id",(cid,))
+
+@app.post("/api/chat/regenerate")
+def chat_regenerate(x:RegenerateIn):
+    try: return {"answer":regenerate(x.conversation_id)}
+    except ValueError as e: raise HTTPException(404,str(e))
+    except Exception as e: raise HTTPException(503,str(e))
+
+@app.get("/api/conversations/search")
+def conversations_search(q:str="",limit:int=50):
+    query=q.strip()
+    if not query: return []
+    limit=max(1,min(100,limit))
+    like="%"+query.replace("\\","\\\\").replace("%","\\%").replace("_","\\_")+"%"
+    return rows("SELECT m.conversation_id,c.title,m.role,m.content,m.created_at FROM messages m JOIN conversations c ON c.id=m.conversation_id WHERE m.content LIKE ? ESCAPE '\\' ORDER BY m.id DESC LIMIT ?",(like,limit))
+
+@app.get("/api/conversations/{cid}/export")
+def conversation_export(cid:int):
+    conversation=rows("SELECT id,title,created_at,updated_at FROM conversations WHERE id=?",(cid,))
+    if not conversation: raise HTTPException(404,"Conversation not found")
+    return JSONResponse({"conversation":conversation[0],"messages":rows("SELECT id,role,content,created_at FROM messages WHERE conversation_id=? ORDER BY id",(cid,))})
 
 @app.get("/api/voice/status")
 def voice_api_status(): return voice_status()
