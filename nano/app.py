@@ -14,7 +14,7 @@ from .learning import events, save_response_feedback, feedback_summary, quality_
 from .knowledge import ingest,recent
 from .skills import seed,list_all,set_enabled,proposals,accept,reject
 from .settings import public,set_value,reset,schema as settings_schema,int_value,bool_value
-from .runtime import status,installed_models,registry_models
+from .runtime import status,installed_models,registry_models,model_readiness
 from .model_manager import info,import_model,start_auto_setup,auto_setup_status,start_import_task,cancel_import_task
 from .research import search_web,research_and_learn
 from .web import HTML
@@ -171,7 +171,8 @@ def system_update_rollback(x:UpdateRollbackIn):
 @app.get("/api/health")
 def health():
     s=status()
-    return {"ok":True,"model_reachable":s["reachable"],"runtime":s,"voice":voice_status()}
+    readiness=model_readiness(s)
+    return {"ok":True,"model_reachable":s["reachable"],"model_ready":readiness["status"]=="ok","model_readiness":readiness,"runtime":s,"voice":voice_status()}
 
 @app.get("/api/system/health")
 def system_health_api():
@@ -181,8 +182,9 @@ def system_health_api():
 @app.get("/api/ready")
 def ready():
     s=status()
-    ready_ok=bool(s["reachable"])
-    payload={"ready":ready_ok,"model_reachable":s["reachable"],"runtime":s}
+    readiness=model_readiness(s)
+    ready_ok=readiness["status"]=="ok"
+    payload={"ready":ready_ok,"model_reachable":s["reachable"],"model_ready":ready_ok,"model_readiness":readiness,"runtime":s}
     if not ready_ok:
         return JSONResponse(payload,status_code=503)
     return payload
