@@ -88,8 +88,10 @@ def _loop():
             due = rows("SELECT * FROM scheduled_jobs WHERE enabled=1 AND next_run_at<=? ORDER BY next_run_at LIMIT 5", (_now().isoformat(),))
             for job in due:
                 # Claim the due job before running to avoid duplicate workers in one process.
-                claimed = run("UPDATE scheduled_jobs SET next_run_at=? WHERE id=? AND next_run_at=?",
-                              ((_now()+timedelta(days=3650)).isoformat(),job["id"],job["next_run_at"]))
+                with connect() as conn:
+                    cur = conn.execute("UPDATE scheduled_jobs SET next_run_at=? WHERE id=? AND next_run_at=?",
+                                       ((_now()+timedelta(days=3650)).isoformat(),job["id"],job["next_run_at"]))
+                    claimed = cur.rowcount == 1
                 if claimed:
                     run_job(job)
         except Exception:
