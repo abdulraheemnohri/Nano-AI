@@ -184,3 +184,39 @@ def test_quality_report_handles_no_feedback_without_division_by_zero(tmp_path, m
     assert report["correction_rate_percent"] is None
     assert report["helpful_rate_change_percentage_points"] is None
     assert report["daily"] == []
+
+
+
+def test_duplicate_memory_scan_only_suggests_and_approved_merge_archives_sources(tmp_path, monkeypatch):
+    from nano.db import rows
+    from nano.memory import find_duplicate_candidates, create_consolidation_proposals, approve_consolidation, search
+
+    configure_db(tmp_path, monkeypatch)
+    first = run("INSERT INTO memories(kind,content,source) VALUES(?,?,?)", ("preference", "Prefers concise answers with examples", "conversation"))
+    second = run("INSERT INTO memories(kind,content,source) VALUES(?,?,?)", ("preference", "Prefers concise answers with examples", "conversation"))
+    candidates = find_duplicate_candidates()
+    assert any(set(item["source_ids"]) == {first, second} for item in candidates)
+    assert len(rows("SELECT id FROM memories WHERE status='active' AND id IN (?,?)", (first, second))) == 2
+
+    queued = create_consolidation_proposals()
+    assert queued["created"] >= 1
+    proposal = next(item for item in queued["proposals"] if set(item["source_ids"]) == {first, second})
+    result = approve_consolidation(proposal["id"], "User prefers concise answers with useful examples.")
+    assert result["ok"] is True
+    assert len(rows("SELECT id FROM memories WHERE status='merged' AND id IN (?,?)", (first, second))) == 2
+    matches = search("User prefers concise answers")
+    assert matches and matches[0]["content"] == "User prefers concise answers with useful examples."
+    assert rows("SELECT status FROM memory_consolidation_proposals WHERE id=?", (proposal["id"],))[0]["status"] == "accepted"
+
+
+def test_rejected_memory_consolidation_leaves_original_memories_active(tmp_path, monkeypatch):
+    from nano.db import rows
+    from nano.memory import create_consolidation_proposals, reject_consolidation
+
+    configure_db(tmp_path, monkeypatch)
+    first = run("INSERT INTO memories(kind,content) VALUES(?,?)", ("fact", "Lives in a city and likes local tools"))
+    second = run("INSERT INTO memories(kind,content) VALUES(?,?)", ("fact", "Lives in a city and likes local tools"))
+    proposal = next(item for item in create_consolidation_proposals()["proposals"] if set(item["source_ids"]) == {first, second})
+    assert reject_consolidation(proposal["id"]) == {"ok": True}
+    assert len(rows("SELECT id FROM memories WHERE status='active' AND id IN (?,?)", (first, second))) == 2
+    assert rows("SELECT status FROM memory_consolidation_proposals WHERE id=?", (proposal["id"],))[0]["status"] == "rejected"
