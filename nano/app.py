@@ -8,12 +8,12 @@ from starlette.background import BackgroundTask
 from pydantic import BaseModel, Field
 from . import config
 from .db import init_db,rows,run
-from .core import respond
+from .core import respond, generate_proactive_talk
 from .memory import search,forget,clear
-from .learning import events
+from .learning import events, save_response_feedback, feedback_summary
 from .knowledge import ingest,recent
 from .skills import seed,list_all,set_enabled,proposals,accept,reject
-from .settings import public,set_value,reset,schema as settings_schema,int_value
+from .settings import public,set_value,reset,schema as settings_schema,int_value,bool_value
 from .runtime import status,installed_models,registry_models
 from .model_manager import info,import_model,start_auto_setup,auto_setup_status,start_import_task,cancel_import_task
 from .research import search_web,research_and_learn
@@ -28,6 +28,7 @@ from .browser import browser_action
 from .messaging import telegram_send, webhook_send
 from .mcp import handle_message
 from .desktop import desktop_action
+from .updates import check_update, apply_update
 
 app=FastAPI(title="Nano AI",version="0.5.0")
 @app.on_event("startup")
@@ -74,6 +75,16 @@ async def protect_api(request: Request, call_next):
     return await call_next(request)
 
 class ChatIn(BaseModel): conversation_id:int=1; message:str
+class FeedbackIn(BaseModel):
+    conversation_id:int = Field(ge=1)
+    user_text:str = Field(min_length=1,max_length=12000)
+    assistant_text:str = Field(min_length=1,max_length=20000)
+    rating:int
+    correction:str = Field(default="",max_length=2000)
+class ProactiveTalkIn(BaseModel):
+    prompt:str|None = Field(default=None,max_length=1000)
+class UpdateApplyIn(BaseModel):
+    approved:bool = False
 class SettingIn(BaseModel): key:str; value:str
 class KnowledgeIn(BaseModel): text:str; source:str="local"
 class ConversationIn(BaseModel): title:str="New conversation"
@@ -121,6 +132,30 @@ class WebhookSendIn(BaseModel):
 @app.get("/",response_class=HTMLResponse)
 def home(): return HTML
 
+@app.post("/api/talk/proactive")
+def proactive_talk(x:ProactiveTalkIn):
+    if not bool_value("autonomous_talk_enabled", False):
+        raise HTTPException(403,"Enable autonomous talking in Settings first.")
+    if not bool_value("voice_enabled", True) or not bool_value("auto_tts", True):
+        raise HTTPException(403,"Enable voice and auto-TTS in Settings first.")
+    prompt = (x.prompt or public().get("autonomous_talk_prompt", "")).strip()
+    if not prompt or len(prompt) > 1000:
+        raise HTTPException(400,"A valid proactive-talk prompt is required.")
+    try:
+        return {"answer": generate_proactive_talk(prompt), "mode":"local-proactive-check-in"}
+    except Exception as e:
+        raise HTTPException(503,str(e))
+
+@app.get("/api/system/update/check")
+def system_update_check():
+    try: return check_update()
+    except RuntimeError as e: raise HTTPException(503,str(e))
+@app.post("/api/system/update/apply")
+def system_update_apply(x:UpdateApplyIn):
+    try: return apply_update(x.approved)
+    except PermissionError as e: raise HTTPException(403,str(e))
+    except RuntimeError as e: raise HTTPException(409,str(e))
+
 @app.get("/api/health")
 def health():
     s=status()
@@ -164,6 +199,17 @@ def delete_memory(mid:int): forget(mid); return {"ok":True}
 def delete_memories(): clear(); return {"ok":True}
 @app.get("/api/learning/events")
 def learning_events(): return events(100)
+@app.get("/api/learning/feedback-summary")
+def learning_feedback_summary(): return feedback_summary()
+@app.post("/api/feedback")
+def response_feedback(x:FeedbackIn):
+    if x.rating not in (-1,1): raise HTTPException(400,"rating must be 1 or -1")
+    if not rows("SELECT id FROM conversations WHERE id=?", (x.conversation_id,)):
+        raise HTTPException(404,"Conversation not found")
+    try:
+        return save_response_feedback(x.conversation_id,x.user_text,x.assistant_text,x.rating,x.correction)
+    except ValueError as e:
+        raise HTTPException(400,str(e))
 
 @app.get("/api/skills")
 def skills(): return list_all()
