@@ -2,6 +2,7 @@ import hashlib
 import shutil
 import subprocess
 import threading
+import re
 from . import config
 from .runtime import registry_models, litert_lm_binary
 
@@ -15,12 +16,35 @@ def default_model_path():
 def registry_list():
     return registry_models()
 
+def validate_import_request(repo, filename, model_id=None):
+    """Validate user-controlled model import identifiers before invoking the CLI."""
+    repo = str(repo or "").strip()
+    filename = str(filename or "").strip()
+    target = str(model_id or config.LITERT_MODEL).strip()
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,95}/[A-Za-z0-9][A-Za-z0-9._-]{0,95}", repo):
+        raise ValueError("Repository must use the Hugging Face owner/repository format.")
+    if not filename or filename in {".", ".."} or "/" in filename or filename.endswith(".") or chr(92) in filename or not filename.lower().endswith(".litertlm"):
+        raise ValueError("Filename must be a single .litertlm artifact filename.")
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}", target):
+        raise ValueError("Model ID may contain only letters, numbers, dots, underscores, and hyphens.")
+    return repo, filename, target
+
+
 def import_model(repo=MODEL_REPO, filename=MODEL_FILE, model_id=None):
+    repo, filename, target = validate_import_request(repo, filename, model_id)
     binary = litert_lm_binary()
     if not binary:
         raise RuntimeError("litert-lm was not found. Install it with: python -m pip install -U litert-lm")
-    target = model_id or config.LITERT_MODEL
-    subprocess.run([binary, "import", f"--from-huggingface-repo={repo}", filename, target], check=True)
+    try:
+        subprocess.run(
+            [binary, "import", f"--from-huggingface-repo={repo}", filename, target],
+            check=True,
+            timeout=7200,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError("Model import timed out after 2 hours. Check network connectivity and LiteRT-LM logs.") from exc
+    except subprocess.CalledProcessError as exc:
+        raise RuntimeError(f"LiteRT-LM model import failed with exit code {exc.returncode}.") from exc
     return target
 
 def remove_model(model_id):
