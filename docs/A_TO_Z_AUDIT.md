@@ -72,3 +72,12 @@ Audit scope: current `main` source tree. This inventory distinguishes implemente
 - Learning reports count helpful/unhelpful ratings and explicit corrections, overall helpful/correction rates, daily totals for the last 14 days, and a descriptive comparison of the last 7 days with the prior 7 days.
 - Rates are omitted when there is insufficient feedback; the UI explicitly states these metrics do not prove causal model improvement.
 - API: GET /api/learning/quality. Metrics use only locally stored explicit user feedback.
+
+
+## Memory consolidation and duplicate review
+
+- Duplicate detection suggests exact text matches and high token-overlap candidates; it is heuristic and requires human review.
+- Scanning only creates review proposals. It never merges or deletes memories.
+- The Memory UI shows source records and an editable consolidated text before approval.
+- Approval validates that every source remains active, then atomically inserts the replacement and marks source records `merged`; rejecting preserves source records unchanged.
+- API: `GET /api/memories/duplicates`, `GET /api/memories/consolidation`, `POST /api/memories/consolidation/scan`, `POST /api/memories/consolidation/{id}/approve`, and `POST /api/memories/consolidation/{id}/reject`.
