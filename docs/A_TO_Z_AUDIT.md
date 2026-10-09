@@ -48,3 +48,11 @@ Audit scope: current `main` source tree. This inventory distinguishes implemente
 - Require explicit approval for terminal/browser actions.
 - Treat imported web pages and model output as untrusted.
 - Download backups regularly and verify them with `PRAGMA integrity_check`.
+
+
+## New conversational and update lifecycle additions
+
+- **Explicit feedback loop:** per-answer helpful/unhelpful rating and optional correction stored in SQLite; recent corrections are injected into future model context. This changes response guidance, not model weights.
+- **Autonomous talking:** opt-in local-model check-ins, configurable prompt and 10-1440 minute interval, only while the browser tab is visible and idle; local Piper TTS is required.
+- **GitHub update lifecycle:** read-only update check plus explicit approved fast-forward update, blocked on dirty worktrees or non-main branches and restricted to the expected official origin. Dependency installation and process restart remain manual.
+- **Validation:** tests cover feedback storage, correction retrieval, proactive-talk event logging, update checking, and the explicit-approval gate. Check the GitHub Actions result for the latest commit before release.
