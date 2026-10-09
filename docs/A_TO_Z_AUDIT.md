@@ -119,3 +119,9 @@ Audit scope: current `main` source tree. This inventory distinguishes implemente
 - It reports JSON, warns when the model endpoint is unavailable, and exits non-zero for critical failures such as remote binding without an API token or an invalid database.
 - It does not initialize the database, install dependencies, fetch models, alter settings, or start services.
 - Automated coverage: `tests/test_doctor.py` checks the healthy local setup and the remote-binding authentication guard.
+
+## Model readiness diagnostics (Phase 2 improvement)
+
+- `nano/runtime.py` now records an `endpoint_error` reason (connection refusal, HTTP status, or a parse failure) and exposes `model_readiness(runtime)`, a shared classifier for model readiness.
+- `nano-ai doctor` and the live System health page now distinguish three states: endpoint unreachable (start hint: `nano-ai litert-lm`), endpoint reachable but the configured model is not served or the registry is empty (import hint: `nano-ai download-model`), and endpoint reachable with the configured model served (ok).
+- Regression coverage lives in `tests/test_doctor.py` and `tests/test_system_health.py`. These are mocked endpoint tests; they are not evidence of real LiteRT-LM inference on a target machine.
