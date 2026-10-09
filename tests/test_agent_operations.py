@@ -72,3 +72,18 @@ def test_api_requires_configured_token(tmp_path, monkeypatch):
         assert client.get("/api/health").status_code == 401
         response = client.get("/api/health", headers={"Authorization":"Bearer test-secret-token"})
         assert response.status_code == 200
+
+
+def test_request_size_and_rate_protection_are_configurable(monkeypatch):
+    monkeypatch.setenv("NANO_MAX_REQUEST_BYTES", "32768")
+    monkeypatch.setenv("NANO_RATE_LIMIT_PER_MINUTE", "10")
+    assert security.max_request_bytes() == 32768
+    assert security.rate_limit_per_minute() == 10
+
+
+def test_rate_limit_blocks_after_configured_number(monkeypatch):
+    monkeypatch.setenv("NANO_RATE_LIMIT_PER_MINUTE", "10")
+    key = "test-rate-limit-unique"
+    for i in range(10):
+        assert security.request_rate_allowed(key, now=100+i*0.01)
+    assert not security.request_rate_allowed(key, now=101)
