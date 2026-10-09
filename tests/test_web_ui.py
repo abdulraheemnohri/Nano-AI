@@ -16,3 +16,18 @@ def test_model_page_wires_auto_setup_cancel_and_progress():
     assert "id='cancelAutoModel'" in html
     assert "id='autoModelProgress'" in html
     assert "model_loaded" in html
+
+def test_scheduler_ui_exposes_per_job_run_timeout():
+    html = web.HTML
+    assert "id='jobTimeout'" in html
+    assert "timeout_seconds:Number($('jobTimeout').value)" in html
+    assert "timeout '+(j.timeout_seconds||300)+' sec" in html
+
+
+def test_model_page_renders_served_and_registry_lists():
+    html = web.HTML
+    assert "id='modelLists'" in html
+    assert "async function loadModelLists()" in html
+    assert "api('/api/models/registry')" in html
+    assert "api('/api/health')" in html
+    assert "refreshAutoModel(); loadModelLists(); }" in html
