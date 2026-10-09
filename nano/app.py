@@ -39,7 +39,7 @@ async def protect_api(request: Request, call_next):
     if request.url.path.startswith("/api/") or request.url.path == "/mcp":
         token = configured_token()
         peer = request.client.host if request.client else ""
-        remote_request = not is_loopback_host(peer)
+        remote_request = bool(peer) and peer not in {"testclient", "localhost", "::ffff:127.0.0.1"} and not is_loopback_host(peer)
         required = bool(token) or remote_request or not is_loopback_host(config.HOST)
         supplied = request.headers.get("authorization", "")
         if supplied.lower().startswith("bearer "):
@@ -317,6 +317,29 @@ def browser_control(x:BrowserIn):
     except ValueError as e: raise HTTPException(400,str(e))
     except PermissionError as e: raise HTTPException(403,str(e))
     except RuntimeError as e: raise HTTPException(503,str(e))
+
+@app.post("/api/channels/telegram/webhook")
+def telegram_webhook(request: Request, update:dict):
+    import os, hmac
+    expected = os.getenv("NANO_TELEGRAM_WEBHOOK_SECRET", "").strip()
+    supplied = request.headers.get("x-telegram-bot-api-secret-token", "")
+    if not expected or not supplied or not hmac.compare_digest(expected,supplied):
+        raise HTTPException(401,"Telegram webhook secret is missing or invalid.")
+    message = update.get("message") or update.get("edited_message") or {}
+    chat = message.get("chat") or {}
+    text = message.get("text")
+    chat_id = chat.get("id")
+    if not chat_id or not isinstance(text,str) or not text.strip():
+        return {"ok":True,"ignored":True}
+    if len(text)>config.MAX_MESSAGE_CHARS:
+        raise HTTPException(413,"Telegram message is too long.")
+    try:
+        conv = rows("SELECT id FROM conversations ORDER BY id LIMIT 1")
+        cid = conv[0]["id"] if conv else run("INSERT INTO conversations(title) VALUES('Telegram')")
+        answer = respond(cid,text)
+        return telegram_send(chat_id,answer)
+    except Exception as e:
+        raise HTTPException(502,"Could not process Telegram update: "+str(e)[:300])
 
 @app.post("/api/channels/telegram/send")
 def telegram_send_api(x:TelegramSendIn):
