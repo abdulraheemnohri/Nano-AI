@@ -34,7 +34,7 @@ def run_command(name, args=None, timeout=15):
             try: size=item.stat().st_size if item.is_file() else 0
             except OSError: size=0
             entries.append(("d " if item.is_dir() else "f ")+item.name+(f" ({size} bytes)" if item.is_file() else ""))
-        return {"command":name,"status":"complete","returncode":0,"stdout":"\\n".join(entries),"stderr":""}
+        return {"command":name,"status":"complete","returncode":0,"stdout":"\n".join(entries),"stderr":""}
     commands = {
         "git-status": ["git","status","--short","--branch"],
         "git-log": ["git","log","-5","--oneline"],
