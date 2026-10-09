@@ -84,7 +84,7 @@ No browser SpeechRecognition or cloud audio processing is required.
 
 ## UI
 
-Talk supports conversations, microphone recording, WAV upload and TTS playback. Memory supports search and forgetting individual entries. Learning shows learning events. Skills can be enabled or disabled and proposed skills require approval. Knowledge imports local text. Model and System pages expose LiteRT-LM runtime state. The tool registry is currently available through the API.
+Talk supports conversations, microphone recording, WAV upload and TTS playback. Memory supports search and forgetting individual entries. Learning shows learning events. Skills can be enabled or disabled and proposed skills require approval. Knowledge imports local text. Model and System pages expose LiteRT-LM runtime state. The Tools page lists built-in tools, provides enable/disable switches, and includes a manual JSON runner. Talk recognizes supported explicit commands such as `calculate 2 + 2`, `convert 1 km to m`, `search my memory for solar`, `search local knowledge for inverter`, and `count words in: hello world`.
 
 ## CLI
 
