@@ -63,12 +63,7 @@ def run_job(job):
     started = run("INSERT INTO scheduled_runs(job_id,status,result) VALUES(?,?,?)", (job["id"],"running",""))
     try:
         from .core import respond
-        from .db import rows as db_rows
-        conv = db_rows("SELECT id FROM conversations ORDER BY id LIMIT 1")
-        if not conv:
-            cid = run("INSERT INTO conversations(title) VALUES(?)", ("Scheduled: "+job["name"],))
-        else:
-            cid = conv[0]["id"]
+        cid = run("INSERT INTO conversations(title) VALUES(?)", ("Scheduled: "+job["name"],))
         payload = json.loads(job["payload"])
         result = respond(cid, "[Scheduled task: "+job["name"]+"]\n"+payload["prompt"])
         run("UPDATE scheduled_runs SET status=?,result=?,finished_at=CURRENT_TIMESTAMP WHERE id=?",
