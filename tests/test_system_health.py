@@ -48,8 +48,14 @@ def test_system_health_returns_read_only_live_counts_and_task_errors(tmp_path, m
 
 def test_system_health_does_not_treat_optional_voice_as_a_failure(tmp_path, monkeypatch):
     _setup_health_db(tmp_path, monkeypatch)
-    monkeypatch.setattr(scheduler, "_thread", object())
-    # An object without is_alive means the worker is not running; that is a warning.
+    class RunningThread:
+        def is_alive(self):
+            return True
+    class ClearStopEvent:
+        def is_set(self):
+            return False
+    monkeypatch.setattr(scheduler, "_thread", RunningThread())
+    monkeypatch.setattr(scheduler, "_stop", ClearStopEvent())
     report = system_health.system_health()
     assert report["overall"] == "warn"
     voice = next(item for item in report["checks"] if item["name"] == "voice")
