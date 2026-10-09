@@ -357,6 +357,9 @@ async def restore_database(file: UploadFile = File(...)):
             destination = sqlite3.connect(str(config.DB_PATH), timeout=10)
             try:
                 source.backup(destination)
+                # Migrate optional tables when restoring backups created by older Nano versions.
+                destination.execute("CREATE TABLE IF NOT EXISTS response_feedback(id INTEGER PRIMARY KEY AUTOINCREMENT, conversation_id INTEGER NOT NULL, user_text TEXT NOT NULL, assistant_text TEXT NOT NULL, rating INTEGER NOT NULL CHECK(rating IN (-1,1)), correction TEXT NOT NULL DEFAULT '', created_at TEXT DEFAULT CURRENT_TIMESTAMP)")
+                destination.execute("CREATE INDEX IF NOT EXISTS idx_feedback_recent ON response_feedback(id DESC)")
                 result = destination.execute("PRAGMA integrity_check").fetchone()
                 if not result or result[0] != "ok":
                     raise sqlite3.DatabaseError("Restored database failed integrity_check.")
@@ -560,6 +563,7 @@ def messages(cid:int):
 def voice_api_status(): return voice_status()
 @app.post("/api/voice/stt")
 async def voice_stt(file:UploadFile=File(...)):
+    if not bool_value("voice_enabled", True): raise HTTPException(403,"Voice is disabled in Settings.")
     if file.content_type not in {"audio/wav","audio/x-wav","audio/wave","application/octet-stream"}: raise HTTPException(415,"Upload a mono 16-bit WAV file.")
     with NamedTemporaryFile(prefix="nano-stt-",suffix=".wav",delete=False) as tmp:
         temp=Path(tmp.name); data=await file.read()
@@ -570,6 +574,7 @@ async def voice_stt(file:UploadFile=File(...)):
     finally: temp.unlink(missing_ok=True)
 @app.get("/api/voice/tts")
 def voice_tts(text:str):
+    if not bool_value("voice_enabled", True): raise HTTPException(403,"Voice is disabled in Settings.")
     if not text.strip() or len(text)>config.MAX_MESSAGE_CHARS: raise HTTPException(400,"Invalid TTS text.")
     with NamedTemporaryFile(prefix="nano-tts-",suffix=".wav",delete=False) as tmp: output=Path(tmp.name)
     try:
