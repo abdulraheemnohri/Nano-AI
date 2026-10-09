@@ -117,6 +117,14 @@ Talk supports conversations, microphone recording, WAV upload and TTS playback. 
 
 `NANO_LITERT_URL` defaults to `http://127.0.0.1:9379`. `NANO_LITERT_MODEL` defaults to `qwen3-1.7b`. Other settings include `NANO_MODEL_NAME`, `NANO_MAX_CONTEXT`, `NANO_TEMPERATURE`, `NANO_LEARNING_ENABLED`, `NANO_STT_MODEL`, `NANO_PIPER_COMMAND` and `NANO_PIPER_VOICE`. Tool enablement is persisted in the local settings database.
 
+## Database backup
+
+Download a consistent SQLite snapshot from `GET /api/backup` while Nano is running. The endpoint uses SQLite's online backup API so the snapshot includes committed data even when WAL mode is in use. Verify a downloaded backup before relying on it:
+
+    python -c "import sqlite3,sys; c=sqlite3.connect(sys.argv[1]); print(c.execute('PRAGMA integrity_check').fetchone()[0]); c.close()" nano-ai-backup.sqlite3
+
+The expected output is `ok`. Keep backups private because they can contain conversation history, memories, and imported knowledge. Restoring is intentionally a manual operation: stop Nano, preserve a copy of the current database, then replace the configured database file with a verified backup.
+
 ## Security
 
 Nano is local-first and does not require Firebase or cloud AI. Built-in tools are allowlisted and validated. Keep local HTTP services bound to localhost unless you add authentication and network controls.
