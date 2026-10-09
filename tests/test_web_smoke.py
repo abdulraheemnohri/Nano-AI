@@ -56,3 +56,13 @@ def test_embedded_ui_has_auth_aware_api_client_and_visible_errors():
     assert "Authorization" in html
     assert "status===401" in html or "status == 401" in html
     assert "throw Error" in html
+
+
+def test_pagination_failures_are_visible_and_retryable():
+    from nano import web
+
+    html = web.HTML
+    assert "Could not load more conversations:" in html
+    assert "Could not load more learning events:" in html
+    assert "Could not load more knowledge:" in html
+    assert "pagination-error" in html
