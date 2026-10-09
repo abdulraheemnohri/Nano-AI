@@ -94,6 +94,13 @@ Model imports expose a progress percentage, current phase, and cancellation endp
 
 Set a strong random token in `NANO_API_TOKEN`. The UI prompts for it when the API returns 401 and keeps it in the current browser tab's session storage. Use `Authorization: Bearer YOUR_TOKEN` or `X-Nano-Token: YOUR_TOKEN` for API clients. The CLI refuses non-loopback binding without this token; also configure TLS, firewall rules, and a reverse proxy appropriately.
 
+### Request limits, settings, and recovery
+
+- `NANO_MAX_REQUEST_BYTES=1048576` limits JSON request bodies when Content-Length is present (default 1 MiB; maximum configurable value 10 MB).
+- `NANO_RATE_LIMIT_PER_MINUTE=120` limits API calls per client IP per process. Multi-worker deployments should also configure reverse-proxy rate/body limits.
+- Settings have a schema endpoint at `GET /api/settings/schema`, including descriptions, defaults, choices and numeric bounds. Theme, language, model parameters, memory limits, knowledge list size, learning, and voice toggles are wired to runtime/UI behavior.
+- Settings offers a SQLite backup restore upload at `POST /api/restore`. Restore checks database integrity and required tables, creates a pre-restore snapshot in `data/recovery/`, and reports its filename. Keep this directory private.
+
 ### Optional integrations
 
 - `NANO_TELEGRAM_BOT_TOKEN`: Telegram outbound messages.
