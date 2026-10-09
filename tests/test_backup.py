@@ -25,7 +25,7 @@ def test_backup_creates_valid_sqlite_snapshot(tmp_path, monkeypatch):
         finally:
             snapshot.close()
     finally:
-        response.background.func(response.background.args[0]) if response.background else None
+        __import__("pathlib").Path(response.path).unlink(missing_ok=True)
 
 
 def test_backup_returns_404_when_database_is_missing(tmp_path, monkeypatch):
