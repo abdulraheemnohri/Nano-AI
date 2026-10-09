@@ -96,7 +96,9 @@ def start_scheduler():
     global _thread
     init_scheduler_db()
     with _lock:
-        if _thread and _thread.is_alive(): return
+        if _thread and _thread.is_alive():
+            if not _stop.is_set(): return
+            _thread.join(timeout=2.5)
         _stop.clear()
         _thread = threading.Thread(target=_loop,name="nano-scheduler",daemon=True)
         _thread.start()
