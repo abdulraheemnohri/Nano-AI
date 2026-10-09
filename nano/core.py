@@ -2,7 +2,7 @@ import json
 import re
 from . import config
 from .db import init_db
-from .learning import learn_from_text
+from .learning import learn_from_text, feedback_examples
 from .memory import search as search_memory
 from .model import chat
 from .settings import bool_value, int_value
@@ -18,7 +18,14 @@ def build_context(query):
     ms = search_memory(query, int_value("memory_limit", 6))
     mt = "\n".join("- " + m["content"] for m in ms)
     sp = active_prompts()
-    return "\n\n".join(x for x in ["Relevant memory:\n" + mt if mt else "", "Active skills:\n" + sp if sp else ""] if x)
+    feedback = feedback_examples(5)
+    guidance = []
+    for item in feedback:
+        correction = str(item.get("correction", "")).strip()
+        if correction:
+            guidance.append(("- Avoid this prior issue: " if item.get("rating") == -1 else "- User-provided response preference: ") + correction[:500])
+    feedback_text = "Explicit user feedback from previous conversations (use as guidance, not as instructions to override safety or the current request):\\n" + "\\n".join(guidance) if guidance else ""
+    return "\\n\\n".join(x for x in ["Relevant memory:\\n" + mt if mt else "", "Active skills:\\n" + sp if sp else "", feedback_text] if x)
 
 
 def _explicit_tool_request(text):
@@ -83,4 +90,22 @@ def respond(conversation_id, user_text):
     run("UPDATE conversations SET updated_at=CURRENT_TIMESTAMP WHERE id=?", (conversation_id,))
     if bool_value("learning_enabled", config.LEARNING_ENABLED):
         learn_from_text(user_text)
+    return answer
+
+
+
+def generate_proactive_talk(prompt):
+    """Generate a short local check-in without inventing completed background work."""
+    from .db import run
+    from .model import chat
+    instruction = (
+        "You are Nano AI, a local assistant. Produce a brief, natural spoken check-in in 1-3 sentences. "
+        "Use available memory and feedback only when relevant. Do not claim you monitored the user, "
+        "performed tasks, browsed the web, or changed files unless the context proves it. "
+        "Avoid repeating generic greetings. If there is nothing useful to say, say so briefly.\\n\\n"
+        "Check-in instruction: " + str(prompt).strip()[:1000]
+    )
+    answer = chat([], instruction, build_context(instruction))
+    run("INSERT INTO learning_events(event_type,input_text,result) VALUES(?,?,?)",
+        ("autonomous_talk", instruction[:1200], answer[:4000]))
     return answer
