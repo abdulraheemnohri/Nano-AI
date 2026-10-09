@@ -110,3 +110,32 @@ def start_auto_setup():
         thread = threading.Thread(target=_auto_setup_worker, name="nano-model-setup", daemon=True)
         thread.start()
         return dict(_AUTO_STATE)
+
+
+def start_import_task(repo, filename, model_id=None):
+    """Queue a validated custom model import without blocking the HTTP request."""
+    repo, filename, target = validate_import_request(repo, filename, model_id)
+    with _AUTO_LOCK:
+        if _AUTO_STATE["status"] in {"queued", "running"}:
+            raise RuntimeError("A model setup/import task is already active.")
+        _AUTO_STATE.update(status="queued", message=f"Custom model import queued for {target}.", model_id=target)
+        thread = threading.Thread(
+            target=_custom_import_worker,
+            args=(repo, filename, target),
+            name="nano-custom-model-import",
+            daemon=True,
+        )
+        thread.start()
+        return dict(_AUTO_STATE)
+
+
+def _custom_import_worker(repo, filename, target):
+    try:
+        with _AUTO_LOCK:
+            _AUTO_STATE.update(status="running", message=f"Importing {repo}/{filename}. This may take a while.", model_id=target)
+        imported = import_model(repo, filename, target)
+        with _AUTO_LOCK:
+            _AUTO_STATE.update(status="complete", message="Custom model import command completed. Check runtime status before chatting.", model_id=imported)
+    except Exception as exc:
+        with _AUTO_LOCK:
+            _AUTO_STATE.update(status="error", message=str(exc)[:500], model_id=target)
