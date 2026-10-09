@@ -80,6 +80,8 @@ Built-in tools remain local and allowlisted. Optional restricted terminal and Pl
 
 Open the Model page and choose **Auto setup / download default model**. Nano checks whether the LiteRT-LM CLI is installed and whether the configured Qwen3 1.7B model is listed in the registry. If it is missing, Nano runs the project's configured LiteRT-LM import operation in a background task and exposes status at `GET /api/models/auto-setup`. Starting setup is an explicit user action because the model may require about 1 GB of storage and bandwidth. The setup process does not silently download models on application startup. The Model page also provides a custom import form for a user-supplied Hugging Face repository, exact artifact filename, and local model ID; use artifact names supported by your installed LiteRT-LM release. For API clients, `POST /api/models/import-task` queues a validated custom import without holding the request open; poll `GET /api/models/auto-setup` for `queued`, `running`, `complete`, or `error` state. Only one model setup/import task can run at a time.
 
+The Model page also renders two separate model lists: **served models** reported by the running LiteRT-LM endpoint (`/v1/models`) and **registry models** reported by the local `litert-lm list` command, with the configured model highlighted. Readiness is tri-state: the endpoint can be unreachable, reachable but not serving the configured model, or serving it. `GET /api/health` and `GET /api/ready` use the same classifier, and `/api/ready` returns 503 with an actionable detail message when the configured model is not served.
+
 ## Live system health dashboard
 
 Open **System** in the Nano AI web UI and use **Refresh health** to inspect live, read-only status from the running process. The dashboard shows SQLite integrity and conversation/message/memory counts, LiteRT-LM endpoint connectivity, scheduler worker status, recent failed/interrupted scheduled runs, and optional Vosk/Piper readiness. Raw JSON is available for troubleshooting.
@@ -96,7 +98,7 @@ It checks the Python version, directory writability, SQLite integrity and requir
 
 ## Project audit
 
-See [docs/A_TO_Z_AUDIT.md](docs/A_TO_Z_AUDIT.md) for an implementation inventory, known gaps, security constraints, and verification checklist. It explicitly separates shipped features from planned or partial capabilities. See [docs/FINAL_RELEASE_REVIEW.md](docs/FINAL_RELEASE_REVIEW.md) for the final A-to-Z release decision, automated-test evidence, target-machine release gate, and explicit non-goals.
+See [docs/A_TO_Z_AUDIT.md](docs/A_TO_Z_AUDIT.md) for an implementation inventory, known gaps, security constraints, and verification checklist. It explicitly separates shipped features from planned or partial capabilities. See [docs/FINAL_RELEASE_REVIEW.md](docs/FINAL_RELEASE_REVIEW.md) for the final A-to-Z release decision, automated-test evidence, target-machine release gate, and explicit non-goals. Notable user-facing changes are tracked in [CHANGELOG.md](CHANGELOG.md).
 
 ## Automation, agents, authentication, channels and MCP
 
@@ -148,6 +150,10 @@ No browser SpeechRecognition or cloud audio processing is required.
 ## UI
 
 Talk supports conversations, microphone recording, WAV upload and TTS playback. Memory supports search and forgetting individual entries. Learning shows learning events. Skills can be enabled or disabled and proposed skills require approval. Knowledge imports local text. Model and System pages expose LiteRT-LM runtime state. The Tools page lists built-in tools, provides enable/disable switches, and includes a manual JSON runner. The Model page offers user-triggered automatic model setup, and Web Research lets users search, fetch, and save selected public pages to local knowledge. Talk recognizes supported explicit commands such as `calculate 2 + 2`, `convert 1 km to m`, `search my memory for solar`, `search local knowledge for inverter`, and `count words in: hello world`.
+
+## Conversation management
+
+Talk supports searching conversations by message text (`GET /api/conversations/search?q=`), renaming and deleting conversations, exporting a single conversation as JSON (`GET /api/conversations/{id}/export`), and regenerating the latest answer (`POST /api/chat/regenerate` removes the newest assistant reply and re-runs the model on the last user message without duplicating it). Search escapes SQL wildcard characters and returns a bounded number of results.
 
 ## CLI
 
@@ -203,4 +209,4 @@ The Memory page can scan for exact duplicates and highly similar active memories
 
 ## Scheduler retries and recovery
 
-Recurring assistant-prompt jobs support a bounded retry policy with exponential backoff. Configure the maximum attempts and base retry delay when creating a job. The Automation & Agents page shows the last error and provides a manual Retry now action. Startup marks unfinished runs as interrupted and schedules a retry when attempts remain. This scheduler is an in-process, single-worker feature, not a distributed task queue. See docs/A_TO_Z_AUDIT.md for the complete feature inventory and limitations.
+Recurring assistant-prompt jobs support a bounded retry policy with exponential backoff. Configure the maximum attempts and base retry delay when creating a job. The Automation & Agents page shows the last error and provides a manual Retry now action. Startup marks unfinished runs as interrupted and schedules a retry when attempts remain. Each job also has a hard per-job run timeout (`timeout_seconds`, default 300 seconds, range 5-86400). The model request runs in a worker thread; if it exceeds the timeout, the attempt is recorded as a `JobTimeoutError` and the bounded retry policy applies. Configure it when creating a job or through `POST /api/scheduler/jobs`. This scheduler is an in-process, single-worker feature, not a distributed task queue. See docs/A_TO_Z_AUDIT.md for the complete feature inventory and limitations.
