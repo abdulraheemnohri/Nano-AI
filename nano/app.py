@@ -13,7 +13,7 @@ from .memory import search,forget,clear
 from .learning import events
 from .knowledge import ingest,recent
 from .skills import seed,list_all,set_enabled,proposals,accept,reject
-from .settings import public,set_value,reset
+from .settings import public,set_value,reset,schema as settings_schema
 from .runtime import status,installed_models,registry_models
 from .model_manager import info,import_model,start_auto_setup,auto_setup_status,start_import_task,cancel_import_task
 from .research import search_web,research_and_learn
@@ -215,6 +215,8 @@ def knowledge_add(x:KnowledgeIn):
 
 @app.get("/api/settings")
 def settings(): return public()
+@app.get("/api/settings/schema")
+def settings_schema_api(): return settings_schema()
 @app.post("/api/settings")
 def setting(x:SettingIn):
     try: set_value(x.key,x.value)
