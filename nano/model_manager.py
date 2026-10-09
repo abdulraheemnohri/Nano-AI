@@ -1,6 +1,7 @@
 import hashlib
 import shutil
 import subprocess
+import threading
 from . import config
 from .runtime import registry_models, litert_lm_binary
 
@@ -43,3 +44,44 @@ def sha256(path=None):
     with open(path or default_model_path(),"rb") as f:
         for c in iter(lambda:f.read(1048576),b""): h.update(c)
     return h.hexdigest()
+
+
+_AUTO_LOCK = threading.Lock()
+_AUTO_STATE = {"status": "idle", "message": "Model setup has not been started.", "model_id": None}
+
+
+def auto_setup_status():
+    with _AUTO_LOCK:
+        return dict(_AUTO_STATE)
+
+
+def _auto_setup_worker():
+    try:
+        with _AUTO_LOCK:
+            _AUTO_STATE.update(status="running", message="Checking LiteRT-LM and model registry.", model_id=config.LITERT_MODEL)
+        binary = litert_lm_binary()
+        if not binary:
+            raise RuntimeError("LiteRT-LM CLI is missing. Install it with: python -m pip install -U litert-lm")
+        registry = registry_models()
+        if any(config.LITERT_MODEL.lower() in str(item.get("raw", "")).lower() for item in registry):
+            with _AUTO_LOCK:
+                _AUTO_STATE.update(status="complete", message="Configured model already appears in the LiteRT-LM registry.", model_id=config.LITERT_MODEL)
+            return
+        with _AUTO_LOCK:
+            _AUTO_STATE.update(status="running", message="Importing the default Qwen3 1.7B model. This may take a while and use about 1 GB of storage and network data.", model_id=config.LITERT_MODEL)
+        imported = import_model(MODEL_REPO, MODEL_FILE, config.LITERT_MODEL)
+        with _AUTO_LOCK:
+            _AUTO_STATE.update(status="complete", message="Model import command completed. Check runtime status before chatting.", model_id=imported)
+    except Exception as exc:
+        with _AUTO_LOCK:
+            _AUTO_STATE.update(status="error", message=str(exc)[:500], model_id=config.LITERT_MODEL)
+
+
+def start_auto_setup():
+    with _AUTO_LOCK:
+        if _AUTO_STATE["status"] == "running":
+            return dict(_AUTO_STATE)
+        _AUTO_STATE.update(status="queued", message="Model setup queued.", model_id=config.LITERT_MODEL)
+    thread = threading.Thread(target=_auto_setup_worker, name="nano-model-setup", daemon=True)
+    thread.start()
+    return auto_setup_status()
