@@ -11,10 +11,17 @@ DEFAULTS = {
     "max_history": "12",
     "memory_limit": "6",
     "knowledge_limit": "100",
+    "tool_enabled_calculator": "true",
+    "tool_enabled_datetime_now": "true",
+    "tool_enabled_unit_convert": "true",
+    "tool_enabled_text_stats": "true",
+    "tool_enabled_memory_search": "true",
+    "tool_enabled_knowledge_search": "true",
 }
 
-BOOL_KEYS = {"voice_enabled", "learning_enabled", "auto_tts"}
+BOOL_KEYS = {key for key in DEFAULTS if key.startswith("tool_enabled_")} | {"voice_enabled", "learning_enabled", "auto_tts"}
 INT_KEYS = {"max_tokens", "max_history", "memory_limit", "knowledge_limit"}
+
 
 def _normalize(key, value):
     value = str(value).strip()
@@ -52,6 +59,7 @@ def _normalize(key, value):
         return value
     return value
 
+
 def get_all():
     result = {}
     for key, default in DEFAULTS.items():
@@ -59,17 +67,21 @@ def get_all():
         result[key] = row["value"] if row else default
     return result
 
+
 def public():
     return get_all()
+
 
 def set_value(key, value):
     value = _normalize(key, value)
     run("INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, value))
     return value
 
+
 def bool_value(key, fallback=True):
     value = get_all().get(key, str(fallback)).lower()
     return value in {"true", "1", "yes", "on"}
+
 
 def int_value(key, fallback):
     try:
@@ -77,11 +89,13 @@ def int_value(key, fallback):
     except ValueError:
         return fallback
 
+
 def float_value(key, fallback):
     try:
         return float(get_all().get(key, str(fallback)))
     except ValueError:
         return fallback
+
 
 def reset():
     run("DELETE FROM settings")
