@@ -6,6 +6,9 @@ DEFAULTS = {
     "voice_enabled": "true",
     "learning_enabled": "true",
     "auto_tts": "true",
+    "autonomous_talk_enabled": "false",
+    "autonomous_talk_interval_minutes": "60",
+    "autonomous_talk_prompt": "Offer one brief, useful check-in based on my saved preferences. Ask a question only if it helps. Do not claim you performed background work.",
     "theme": "dark",
     "temperature": "0.7",
     "max_tokens": "1024",
@@ -20,8 +23,8 @@ DEFAULTS = {
     "tool_enabled_knowledge_search": "true",
 }
 
-BOOL_KEYS = {key for key in DEFAULTS if key.startswith("tool_enabled_")} | {"voice_enabled", "learning_enabled", "auto_tts"}
-INT_KEYS = {"max_tokens", "max_history", "memory_limit", "knowledge_limit"}
+BOOL_KEYS = {key for key in DEFAULTS if key.startswith("tool_enabled_")} | {"voice_enabled", "learning_enabled", "auto_tts", "autonomous_talk_enabled"}
+INT_KEYS = {"max_tokens", "max_history", "memory_limit", "knowledge_limit", "autonomous_talk_interval_minutes"}
 
 
 def _normalize(key, value):
@@ -45,11 +48,15 @@ def _normalize(key, value):
             number = int(value)
         except ValueError as exc:
             raise ValueError(f"{key} must be an integer") from exc
-        minimum = 1
-        maximum = {"max_tokens": 4096, "max_history": 128, "memory_limit": 100, "knowledge_limit": 5000}[key]
+        minimum = 10 if key == "autonomous_talk_interval_minutes" else 1
+        maximum = {"max_tokens": 4096, "max_history": 128, "memory_limit": 100, "knowledge_limit": 5000, "autonomous_talk_interval_minutes": 1440}[key]
         if not minimum <= number <= maximum:
             raise ValueError(f"{key} must be between {minimum} and {maximum}")
         return str(number)
+    if key == "autonomous_talk_prompt":
+        if not value or len(value) > 1000:
+            raise ValueError("autonomous_talk_prompt must contain 1-1000 characters.")
+        return value
     if key == "language":
         if not value:
             return "auto"
@@ -116,6 +123,9 @@ DESCRIPTIONS = {
     "max_history": "Maximum recent conversation messages included in model context.",
     "memory_limit": "Maximum relevant memories included in prompt context.",
     "knowledge_limit": "Maximum knowledge entries shown in the knowledge UI.",
+    "autonomous_talk_enabled": "Opt in to proactive local voice check-ins while the web UI is open and the page is idle.",
+    "autonomous_talk_interval_minutes": "Minimum interval between proactive check-ins; valid range 10-1440 minutes.",
+    "autonomous_talk_prompt": "Instruction for proactive check-ins. Runs only when enabled and the web UI is open and idle.",
     "tool_enabled_calculator": "Allow the local calculator tool.",
     "tool_enabled_datetime_now": "Allow the local date/time tool.",
     "tool_enabled_unit_convert": "Allow the local unit conversion tool.",
@@ -142,5 +152,7 @@ def schema():
             item.update(minimum=1, maximum=100, step=1)
         elif key == "knowledge_limit":
             item.update(minimum=1, maximum=5000, step=1)
+        elif key == "autonomous_talk_interval_minutes":
+            item.update(minimum=10, maximum=1440, step=5)
         result.append(item)
     return result
