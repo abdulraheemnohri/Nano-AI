@@ -349,6 +349,19 @@ def backup_database():
 
 
 
+_RECOVERY_SNAPSHOT_KEEP = 10
+
+
+def _prune_recovery_snapshots(recovery_dir):
+    """Keep only the newest pre-restore snapshots so restores cannot fill the disk."""
+    try:
+        snapshots = sorted(recovery_dir.glob("pre-restore-*.sqlite3"), key=lambda p: p.stat().st_mtime, reverse=True)
+        for stale in snapshots[_RECOVERY_SNAPSHOT_KEEP:]:
+            stale.unlink(missing_ok=True)
+    except OSError:
+        pass
+
+
 @app.post("/api/restore")
 async def restore_database(file: UploadFile = File(...)):
     """Validate an uploaded SQLite backup, preserve a recovery snapshot, then restore via SQLite backup."""
@@ -432,6 +445,7 @@ async def restore_database(file: UploadFile = File(...)):
             if isinstance(exc, HTTPException):
                 raise
             raise HTTPException(500, "Restore failed; Nano attempted rollback using the recovery snapshot.") from exc
+        _prune_recovery_snapshots(recovery_dir)
         return {"ok": True, "restored_bytes": size,
                 "recovery_backup": recovery_path.name if recovery_path.exists() else None,
                 "message": "Restore completed and passed SQLite integrity_check."}
@@ -592,7 +606,9 @@ def mcp_endpoint(message:dict):
 def system(): return {"version":"0.5.0","host":config.HOST,"port":config.PORT,"runtime":status(),"voice":voice_status(),"paths":{"data":str(config.DATA_DIR),"models":str(config.MODEL_DIR),"skills":str(config.SKILLS_DIR),"database":str(config.DB_PATH)}}
 
 @app.get("/api/conversations")
-def conversations(): return rows("SELECT * FROM conversations ORDER BY updated_at DESC,id DESC")
+def conversations(limit:int=200):
+    bounded=max(1,min(500,limit))
+    return rows("SELECT * FROM conversations ORDER BY updated_at DESC,id DESC LIMIT ?",(bounded,))
 @app.post("/api/conversations")
 def conversation_create(x:ConversationIn):
     title=x.title.strip()[:120] or "New conversation"; cid=run("INSERT INTO conversations(title) VALUES(?)",(title,))

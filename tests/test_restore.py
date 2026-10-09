@@ -54,3 +54,40 @@ def test_restore_keeps_a_recovery_snapshot(tmp_path, monkeypatch):
         assert restored.execute("SELECT value FROM restored").fetchone()[0] == "new data"
     finally:
         restored.close()
+
+
+def test_restore_prunes_old_recovery_snapshots(tmp_path, monkeypatch):
+    current = tmp_path / "current.sqlite3"
+    conn = sqlite3.connect(current)
+    conn.execute("CREATE TABLE before_restore(value TEXT)")
+    conn.commit()
+    conn.close()
+
+    candidate = tmp_path / "candidate.sqlite3"
+    conn = sqlite3.connect(candidate)
+    conn.executescript(
+        "CREATE TABLE conversations(id INTEGER PRIMARY KEY, title TEXT);"
+        "CREATE TABLE messages(id INTEGER PRIMARY KEY, conversation_id INTEGER, role TEXT, content TEXT);"
+        "CREATE TABLE memories(id INTEGER PRIMARY KEY, content TEXT);"
+        "CREATE TABLE settings(key TEXT PRIMARY KEY, value TEXT NOT NULL);"
+        "CREATE TABLE skills(id INTEGER PRIMARY KEY, name TEXT);"
+        "CREATE TABLE skill_proposals(id INTEGER PRIMARY KEY, name TEXT);"
+        "CREATE TABLE learning_events(id INTEGER PRIMARY KEY, event_type TEXT);"
+    )
+    conn.commit()
+    conn.close()
+    monkeypatch.setattr(app_module.config, "DB_PATH", current)
+
+    recovery_dir = tmp_path / "recovery"
+    recovery_dir.mkdir()
+    for i in range(12):
+        stale = recovery_dir / ("pre-restore-20260101T00000%02dZ.sqlite3" % i)
+        stale.write_bytes(b"stale")
+
+    upload = UploadFile(filename="backup.sqlite3", file=io.BytesIO(candidate.read_bytes()))
+    result = asyncio.run(app_module.restore_database(upload))
+    assert result["ok"] is True
+
+    remaining = sorted(p.name for p in recovery_dir.glob("pre-restore-*.sqlite3"))
+    assert len(remaining) == 10
+    assert result["recovery_backup"] in remaining

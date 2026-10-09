@@ -140,3 +140,9 @@ Audit scope: current `main` source tree. This inventory distinguishes implemente
 - API: `POST /api/scheduler/jobs` accepts `timeout_seconds`; the Automation & Agents UI exposes a run-timeout field and shows each job's timeout.
 - The Model page now renders served models (from the running LiteRT-LM endpoint) separately from registry models (`litert-lm list`), highlighting the configured model, instead of raw JSON only.
 - Coverage: `tests/test_scheduler_reliability.py` (timeout error, retry scheduling, validation, default) and UI id guards in `tests/test_web_ui.py`.
+
+## Performance and disk-safety hardening (Phase 4 improvement)
+
+- `GET /api/conversations` is now bounded (`limit` query parameter, default 200, hard cap 500, ordered by recency) instead of returning every conversation row on each sidebar load.
+- Database restore keeps only the 10 newest `recovery/pre-restore-*.sqlite3` snapshots (`_prune_recovery_snapshots`); pruning failures never abort the restore.
+- Coverage: `tests/test_conversations_api.py` (limit bounding and clamping) and `tests/test_restore.py` (retention keeps 10 newest including the fresh snapshot).

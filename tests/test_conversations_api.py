@@ -75,3 +75,15 @@ def test_conversation_export_returns_full_history(tmp_path, monkeypatch):
 
     missing = client.get("/api/conversations/9999/export")
     assert missing.status_code == 404
+
+
+def test_conversation_list_is_bounded(tmp_path, monkeypatch):
+    client = _setup(tmp_path, monkeypatch)
+    for i in range(5):
+        client.post("/api/conversations", json={"title": "conv-%d" % i})
+
+    limited = client.get("/api/conversations", params={"limit": 3}).json()
+    assert len(limited) == 3
+
+    oversized = client.get("/api/conversations", params={"limit": 99999}).json()
+    assert len(oversized) == 5
