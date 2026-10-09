@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS response_feedback(
 CREATE INDEX IF NOT EXISTS idx_feedback_recent ON response_feedback(id DESC);
 CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id,id);
 CREATE INDEX IF NOT EXISTS idx_memories_active ON memories(status,confidence,updated_at);
+CREATE TABLE IF NOT EXISTS memory_consolidation_proposals(id INTEGER PRIMARY KEY AUTOINCREMENT,source_ids TEXT NOT NULL,merged_content TEXT NOT NULL,kind TEXT NOT NULL,source TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'pending',created_at TEXT DEFAULT CURRENT_TIMESTAMP,reviewed_at TEXT);
 CREATE INDEX IF NOT EXISTS idx_learning_events_created ON learning_events(id);
 CREATE INDEX IF NOT EXISTS idx_skills_enabled ON skills(enabled,name);
 """
