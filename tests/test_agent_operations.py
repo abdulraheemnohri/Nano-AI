@@ -23,7 +23,13 @@ def test_terminal_rejects_arbitrary_commands():
         terminal.run_command("ls", ["../../etc"])
 
 
-def test_mcp_tools_list_uses_json_rpc():
+def test_mcp_tools_list_uses_json_rpc(tmp_path, monkeypatch):
+    import nano.config as cfg
+    import nano.db as dbm
+    db = tmp_path / "mcp.sqlite3"
+    monkeypatch.setattr(cfg, "DB_PATH", db)
+    monkeypatch.setattr(dbm, "DB_PATH", db)
+    dbm.init_db()
     result = mcp.handle_message({"jsonrpc":"2.0","id":7,"method":"tools/list","params":{}})
     assert result["id"] == 7
     assert result["result"]["tools"]
