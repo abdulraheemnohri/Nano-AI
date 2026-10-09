@@ -65,3 +65,10 @@ Audit scope: current `main` source tree. This inventory distinguishes implemente
 - The System page offers a separately approved code rollback. Database restoration is a distinct opt-in checkbox with an additional destructive-action confirmation.
 - Rollback refuses dirty worktrees, non-main branches, missing/unreadable manifests, or a HEAD that no longer matches the recorded update.
 - Dependencies and service restart remain manual. These safeguards reduce risk but do not replace a separate verified backup and maintenance window.
+
+
+## Feedback quality analytics
+
+- Learning reports count helpful/unhelpful ratings and explicit corrections, overall helpful/correction rates, daily totals for the last 14 days, and a descriptive comparison of the last 7 days with the prior 7 days.
+- Rates are omitted when there is insufficient feedback; the UI explicitly states these metrics do not prove causal model improvement.
+- API: GET /api/learning/quality. Metrics use only locally stored explicit user feedback.
