@@ -116,6 +116,9 @@ def _tracked_import(repo, filename, target):
                     estimate = min(90, 5 + int((time.monotonic()-started)/12))
                     _set_task(progress=max(5,estimate), phase="importing", message=f"Import running; estimated progress {max(5,estimate)}% (CLI did not expose a percentage).")
                 time.sleep(0.1)
+            if _CANCEL_EVENT.is_set():
+                _set_task(status="cancelled", message="Model import cancelled by user.", phase="cancelled", cancel_requested=True)
+                raise RuntimeError("Model import cancelled by user.")
             log.flush()
             log.seek(max(0, os.fstat(log.fileno()).st_size - 5000))
             tail = log.read()[-4000:]
