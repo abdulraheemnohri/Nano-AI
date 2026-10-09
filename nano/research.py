@@ -37,7 +37,7 @@ class _TextExtractor(HTMLParser):
         if tag == "title":
             self.in_title = False
         if tag in {"p", "div", "br", "li", "h1", "h2", "h3", "article", "section"}:
-            self.parts.append("\\n")
+            self.parts.append("\n")
 
     def handle_data(self, data):
         text = data.strip()
@@ -216,7 +216,7 @@ def research_and_learn(url, source_label=None):
     source = "web:" + page["url"]
     if source_label:
         source += " (" + " ".join(str(source_label).split())[:100] + ")"
-    chunks = ingest("Title: " + page["title"] + "\\nURL: " + page["url"] + "\\n\\n" + page["text"], source)
+    chunks = ingest("Title: " + page["title"] + "\nURL: " + page["url"] + "\n\n" + page["text"], source)
     return {
         "url": page["url"], "title": page["title"], "characters": page["characters"],
         "chunks": chunks, "preview": page["text"][:1200], "saved_to_local_knowledge": True,

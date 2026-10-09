@@ -69,3 +69,17 @@ def test_dns_public_addresses_are_pinned_for_tls_connection():
     assert connection._pinned_address == "93.184.216.34"
     assert connection._tls_hostname == "example.com"
     connection.close()
+
+
+def test_text_extractor_uses_real_newlines_not_literal_backslash_n():
+    from nano.research import _TextExtractor
+
+    parser = _TextExtractor()
+    parser.feed("<html><body><p>Alpha paragraph.</p><p>Beta paragraph.</p></body></html>")
+    text = " ".join(" ".join(parser.parts).split())
+    assert text == "Alpha paragraph. Beta paragraph."
+    # The bug appended the two-character sequence backslash+n.
+    assert "\\n" not in text
+    assert "\n" not in text
+    # The extractor must emit a real newline character for block tags.
+    assert any(part == "\n" for part in parser.parts)

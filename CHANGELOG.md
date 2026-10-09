@@ -16,6 +16,7 @@ Notable changes to Nano AI are documented here. Releases follow the repository's
 - Model page now renders served models (from the running LiteRT-LM endpoint) separately from registry models (`litert-lm list`), highlighting the configured model.
 
 ### Fixed
+- Web research text extraction emitted the literal two-character sequence `\n` instead of a newline at block-tag boundaries, polluting fetched page text and ingested knowledge with stray backslash-n characters. The extractor and the `research_and_learn` ingest header now use real newlines.
 - Dashboard dead-script bug: a missing `cancelAutoModel` element crashed the whole UI script; the button and progress bar now exist.
 - Honest `/api/ready` and `/api/health`: readiness now uses the tri-state `model_readiness()` classifier (endpoint unreachable / reachable but model not served / served). `/api/ready` returns 503 with actionable detail when the model is not served, and the UI header shows all three states.
 - Model readiness diagnostics (`nano-ai doctor`, System health) now distinguish endpoint-unreachable from reachable-but-model-unserved instead of reporting a false "ready".
