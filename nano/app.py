@@ -13,7 +13,7 @@ from .memory import search,forget,clear
 from .learning import events
 from .knowledge import ingest,recent
 from .skills import seed,list_all,set_enabled,proposals,accept,reject
-from .settings import public,set_value,reset,schema as settings_schema
+from .settings import public,set_value,reset,schema as settings_schema,int_value
 from .runtime import status,installed_models,registry_models
 from .model_manager import info,import_model,start_auto_setup,auto_setup_status,start_import_task,cancel_import_task
 from .research import search_web,research_and_learn
@@ -183,7 +183,7 @@ def skill_enabled(name:str,enabled:bool=True):
     return {"ok":True}
 
 @app.get("/api/knowledge")
-def knowledge(): return recent(100)
+def knowledge(): return recent(int_value("knowledge_limit", 100))
 
 class WebSearchIn(BaseModel):
     query: str = Field(min_length=1, max_length=300)
