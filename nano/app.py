@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from . import config
 from .db import init_db,rows,run
 from .core import respond, generate_proactive_talk
-from .memory import search,forget,clear
+from .memory import search,forget,clear,find_duplicate_candidates,create_consolidation_proposals,list_consolidation_proposals,approve_consolidation,reject_consolidation
 from .learning import events, save_response_feedback, feedback_summary, quality_report
 from .knowledge import ingest,recent
 from .skills import seed,list_all,set_enabled,proposals,accept,reject
@@ -75,6 +75,7 @@ async def protect_api(request: Request, call_next):
     return await call_next(request)
 
 class ChatIn(BaseModel): conversation_id:int=1; message:str
+class MemoryConsolidationIn(BaseModel): merged_content:str|None=Field(default=None,max_length=12000)
 class FeedbackIn(BaseModel):
     conversation_id:int = Field(ge=1)
     user_text:str = Field(min_length=1,max_length=12000)
@@ -206,6 +207,32 @@ def memories(q:str=""): return search(q,50)
 def delete_memory(mid:int): forget(mid); return {"ok":True}
 @app.delete("/api/memories")
 def delete_memories(): clear(); return {"ok":True}
+
+@app.get("/api/memories/duplicates")
+def memory_duplicates():
+    return find_duplicate_candidates()
+
+@app.get("/api/memories/consolidation")
+def memory_consolidation_queue():
+    return list_consolidation_proposals()
+
+@app.post("/api/memories/consolidation/scan")
+def memory_consolidation_scan():
+    return create_consolidation_proposals()
+
+@app.post("/api/memories/consolidation/{proposal_id}/approve")
+def memory_consolidation_approve(proposal_id:int, x:MemoryConsolidationIn):
+    try:
+        return approve_consolidation(proposal_id, x.merged_content)
+    except ValueError as e:
+        raise HTTPException(409,str(e))
+
+@app.post("/api/memories/consolidation/{proposal_id}/reject")
+def memory_consolidation_reject(proposal_id:int):
+    try:
+        return reject_consolidation(proposal_id)
+    except ValueError as e:
+        raise HTTPException(404,str(e))
 @app.get("/api/learning/events")
 def learning_events(): return events(100)
 @app.get("/api/learning/feedback-summary")
