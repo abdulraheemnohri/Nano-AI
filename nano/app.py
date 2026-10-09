@@ -14,7 +14,7 @@ from .knowledge import ingest,recent
 from .skills import seed,list_all,set_enabled,proposals,accept,reject
 from .settings import public,set_value,reset
 from .runtime import status,installed_models,registry_models
-from .model_manager import info,import_model,start_auto_setup,auto_setup_status
+from .model_manager import info,import_model,start_auto_setup,auto_setup_status,start_import_task
 from .research import search_web,research_and_learn
 from .web import HTML
 from .voice import transcribe_wav,speak,voice_status
@@ -193,6 +193,15 @@ def model_auto_setup():
 
 @app.get("/api/models/auto-setup")
 def model_auto_setup_status(): return auto_setup_status()
+@app.post("/api/models/import-task")
+def model_import_task(x:ModelImportIn):
+    try:
+        return start_import_task(x.repo, x.filename, x.model_id)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except RuntimeError as e:
+        raise HTTPException(409, str(e))
+
 @app.post("/api/models/import")
 def model_import(x:ModelImportIn):
     try:
