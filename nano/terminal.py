@@ -10,7 +10,7 @@ MAX_OUTPUT = 12000
 
 def _safe_path(value):
     raw = str(value or ".")
-    if "\\x00" in raw or Path(raw).is_absolute() or any(p == ".." for p in Path(raw).parts):
+    if "\x00" in raw or Path(raw).is_absolute() or any(p == ".." for p in Path(raw).parts):
         raise ValueError("Paths must be relative to the configured workspace and cannot traverse upward.")
     target = (WORKSPACE / raw).resolve()
     if target != WORKSPACE and WORKSPACE not in target.parents:
