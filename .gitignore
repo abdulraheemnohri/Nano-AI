@@ -1,0 +1,7 @@
+*.pyc
+__pycache__/
+*.egg-info/
+data/
+models/
+skills/
+.pytest_cache/
