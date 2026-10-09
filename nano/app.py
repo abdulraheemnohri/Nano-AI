@@ -104,6 +104,7 @@ class ScheduleIn(BaseModel):
     enabled:bool = True
     max_attempts:int = Field(default=3,ge=1,le=10)
     retry_delay_seconds:int = Field(default=60,ge=5,le=3600)
+    timeout_seconds:int = Field(default=300,ge=5,le=86400)
 class AgentTaskIn(BaseModel):
     role:str
     task:str = Field(min_length=1,max_length=8000)
@@ -493,7 +494,7 @@ def scheduler_jobs(): return list_jobs()
 
 @app.post("/api/scheduler/jobs")
 def scheduler_create(x:ScheduleIn):
-    try: return create_job(x.name,x.job_type,{"prompt":x.prompt},x.interval_seconds,x.enabled,x.max_attempts,x.retry_delay_seconds)
+    try: return create_job(x.name,x.job_type,{"prompt":x.prompt},x.interval_seconds,x.enabled,x.max_attempts,x.retry_delay_seconds,x.timeout_seconds)
     except ValueError as e: raise HTTPException(400,str(e))
 
 @app.patch("/api/scheduler/jobs/{job_id}")

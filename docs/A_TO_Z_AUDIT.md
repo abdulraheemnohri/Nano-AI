@@ -132,3 +132,11 @@ Audit scope: current `main` source tree. This inventory distinguishes implemente
 - Added `GET /api/conversations/search?q=` for bounded message search across conversations (LIKE with escaped wildcards, limit 1-100) and `GET /api/conversations/{cid}/export` for single-conversation JSON export.
 - The Talk UI now includes conversation search, Regenerate, Rename, Delete (with confirmation), and Export controls wired to the real APIs.
 - Automated coverage: `tests/test_conversations_api.py` (regeneration, search, export, and error cases). UI id references are guarded by `tests/test_web_ui.py`.
+
+
+## Per-job hard timeout and served-vs-registry model UI (Phase 3 improvement)
+
+- Scheduled jobs now have a per-job `timeout_seconds` column (default 300, range 5-86400, migration-safe via ALTER TABLE). The model request runs in a daemon worker thread; if it exceeds the timeout, the attempt is recorded as an error (`JobTimeoutError`) and the existing bounded retry policy applies. The abandoned worker thread is not forcibly killed; it dies with the process. This closes the single-process part of the former "no forcibly cancellable per-job timeout" gap; the scheduler remains single-process by design.
+- API: `POST /api/scheduler/jobs` accepts `timeout_seconds`; the Automation & Agents UI exposes a run-timeout field and shows each job's timeout.
+- The Model page now renders served models (from the running LiteRT-LM endpoint) separately from registry models (`litert-lm list`), highlighting the configured model, instead of raw JSON only.
+- Coverage: `tests/test_scheduler_reliability.py` (timeout error, retry scheduling, validation, default) and UI id guards in `tests/test_web_ui.py`.

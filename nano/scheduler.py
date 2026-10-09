@@ -44,6 +44,7 @@ def init_scheduler_db():
         _ensure_column(c, "scheduled_jobs", "retry_delay_seconds", "INTEGER NOT NULL DEFAULT 60")
         _ensure_column(c, "scheduled_jobs", "claimed_at", "TEXT")
         _ensure_column(c, "scheduled_jobs", "last_error", "TEXT")
+        _ensure_column(c, "scheduled_jobs", "timeout_seconds", "INTEGER NOT NULL DEFAULT 300")
         _ensure_column(c, "scheduled_runs", "attempt", "INTEGER NOT NULL DEFAULT 1")
     _recover_interrupted_runs()
 
@@ -96,7 +97,7 @@ def list_runs(job_id=None, limit=100):
     return rows("SELECT * FROM scheduled_runs WHERE job_id=? ORDER BY id DESC LIMIT ?", (job_id, bounded))
 
 
-def create_job(name, job_type, payload, interval_seconds, enabled=True, max_attempts=3, retry_delay_seconds=60):
+def create_job(name, job_type, payload, interval_seconds, enabled=True, max_attempts=3, retry_delay_seconds=60, timeout_seconds=300):
     name = str(name or "").strip()[:100]
     if not name:
         raise ValueError("Job name is required.")
@@ -113,10 +114,12 @@ def create_job(name, job_type, payload, interval_seconds, enabled=True, max_atte
         raise ValueError("max_attempts must be between 1 and 10.")
     if isinstance(retry_delay_seconds, bool) or not isinstance(retry_delay_seconds, int) or not 5 <= retry_delay_seconds <= 3600:
         raise ValueError("retry_delay_seconds must be between 5 and 3600.")
+    if isinstance(timeout_seconds, bool) or not isinstance(timeout_seconds, int) or not 5 <= timeout_seconds <= 86400:
+        raise ValueError("timeout_seconds must be between 5 and 86400.")
     next_at = (_now() + timedelta(seconds=interval_seconds)).isoformat()
     jid = run(
-        "INSERT INTO scheduled_jobs(name,job_type,payload,interval_seconds,enabled,next_run_at,max_attempts,retry_delay_seconds) VALUES(?,?,?,?,?,?,?,?)",
-        (name, job_type, json.dumps({"prompt": prompt}, ensure_ascii=False), interval_seconds, 1 if enabled else 0, next_at, max_attempts, retry_delay_seconds),
+        "INSERT INTO scheduled_jobs(name,job_type,payload,interval_seconds,enabled,next_run_at,max_attempts,retry_delay_seconds,timeout_seconds) VALUES(?,?,?,?,?,?,?,?,?)",
+        (name, job_type, json.dumps({"prompt": prompt}, ensure_ascii=False), interval_seconds, 1 if enabled else 0, next_at, max_attempts, retry_delay_seconds, timeout_seconds),
     )
     return next(j for j in list_jobs() if j["id"] == jid)
 
@@ -150,6 +153,39 @@ def delete_job(job_id):
     return {"ok": True}
 
 
+class JobTimeoutError(RuntimeError):
+    """Raised when a scheduled prompt exceeds its per-job hard timeout."""
+
+
+def _execute_prompt(job, payload):
+    """Run one assistant prompt with a per-job hard timeout.
+
+    The model request runs in a daemon worker thread. If it exceeds the
+    job timeout the attempt is recorded as an error and the normal bounded
+    retry policy applies. The abandoned worker thread is not forcibly
+    killed; it is left to finish or die with the process.
+    """
+    timeout = int(job.get("timeout_seconds") or 300)
+    outcome = {}
+
+    def _worker():
+        try:
+            from .core import respond
+            cid = run("INSERT INTO conversations(title) VALUES(?)", ("Scheduled: " + job["name"],))
+            outcome["result"] = respond(cid, "[Scheduled task: " + job["name"] + "]\n" + payload["prompt"])
+        except BaseException as exc:
+            outcome["error"] = exc
+
+    worker = threading.Thread(target=_worker, name="nano-scheduler-job", daemon=True)
+    worker.start()
+    worker.join(timeout)
+    if worker.is_alive():
+        raise JobTimeoutError(f"Job timed out after {timeout} seconds.")
+    if "error" in outcome:
+        raise outcome["error"]
+    return outcome.get("result")
+
+
 def run_job(job):
     attempt = int(job.get("attempt_count", 0)) + 1
     started = run(
@@ -157,10 +193,8 @@ def run_job(job):
         (job["id"], "running", "", attempt),
     )
     try:
-        from .core import respond
-        cid = run("INSERT INTO conversations(title) VALUES(?)", ("Scheduled: " + job["name"],))
         payload = json.loads(job["payload"])
-        result = respond(cid, "[Scheduled task: " + job["name"] + "]\n" + payload["prompt"])
+        result = _execute_prompt(job, payload)
         run(
             "UPDATE scheduled_runs SET status=?,result=?,finished_at=CURRENT_TIMESTAMP WHERE id=?",
             ("complete", str(result)[:12000], started),
