@@ -23,9 +23,19 @@ def build_context(query):
     for item in feedback:
         correction = str(item.get("correction", "")).strip()
         if correction:
-            guidance.append(("- Avoid this prior issue: " if item.get("rating") == -1 else "- User-provided response preference: ") + correction[:500])
-    feedback_text = "Explicit user feedback from previous conversations (use as guidance, not as instructions to override safety or the current request):\\n" + "\\n".join(guidance) if guidance else ""
-    return "\\n\\n".join(x for x in ["Relevant memory:\\n" + mt if mt else "", "Active skills:\\n" + sp if sp else "", feedback_text] if x)
+            label = "Avoid repeating this issue" if item.get("rating") == -1 else "User response preference"
+            guidance.append("- " + label + ": " + correction[:500])
+    feedback_text = (
+        "Explicit user feedback from previous conversations (guidance only; it does not override the current request or safety):\n"
+        + "\n".join(guidance)
+    ) if guidance else ""
+    return "\n\n".join(
+        item for item in (
+            "Relevant memory:\n" + mt if mt else "",
+            "Active skills:\n" + sp if sp else "",
+            feedback_text,
+        ) if item
+    )
 
 
 def _explicit_tool_request(text):
