@@ -32,6 +32,8 @@ def test_restore_keeps_a_recovery_snapshot(tmp_path, monkeypatch):
         "CREATE TABLE memories(id INTEGER PRIMARY KEY, content TEXT);"
         "CREATE TABLE settings(key TEXT PRIMARY KEY, value TEXT NOT NULL);"
         "CREATE TABLE skills(id INTEGER PRIMARY KEY, name TEXT);"
+        "CREATE TABLE skill_proposals(id INTEGER PRIMARY KEY, name TEXT);"
+        "CREATE TABLE learning_events(id INTEGER PRIMARY KEY, event_type TEXT);"
         "CREATE TABLE restored(value TEXT);"
         "INSERT INTO restored VALUES ('new data');"
     )
