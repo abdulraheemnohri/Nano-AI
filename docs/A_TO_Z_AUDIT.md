@@ -111,3 +111,11 @@ Audit scope: current `main` source tree. This inventory distinguishes implemente
 - Current release posture: **feature-complete for the documented local-first scope, but not a claim of production certification**.
 - Run `python -m pip install -e ".[test]"` and `python -m pytest -q`; verify the latest GitHub Actions run before tagging a release.
 - Also complete environment-specific LiteRT-LM inference, optional voice/browser/desktop, backup/restore, Windows PowerShell, and remote-access security smoke tests on the actual target machine.
+
+
+## Installation diagnostics
+
+- `nano-ai doctor` provides read-only installation checks for Python compatibility, configured directory writability, SQLite integrity/schema presence, API bind/auth policy, LiteRT-LM CLI and endpoint reachability, and optional browser/voice dependencies.
+- It reports JSON, warns when the model endpoint is unavailable, and exits non-zero for critical failures such as remote binding without an API token or an invalid database.
+- It does not initialize the database, install dependencies, fetch models, alter settings, or start services.
+- Automated coverage: `tests/test_doctor.py` checks the healthy local setup and the remote-binding authentication guard.
