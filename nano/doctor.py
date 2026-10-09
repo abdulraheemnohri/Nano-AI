@@ -4,7 +4,7 @@ import sqlite3
 import sys
 import tempfile
 from . import config
-from .runtime import status as runtime_status
+from .runtime import status as runtime_status, model_readiness
 from .security import auth_policy
 
 
@@ -71,11 +71,8 @@ def run_checks():
         "ok" if runtime.get("binary") else "warn",
         "LiteRT-LM CLI found." if runtime.get("binary") else "CLI not found; install LiteRT-LM before model setup or inference.",
     ))
-    checks.append(_check(
-        "model endpoint",
-        "ok" if runtime.get("reachable") else "warn",
-        f"Model endpoint {'reachable' if runtime.get('reachable') else 'not reachable'} at {runtime.get('configured_url', config.LITERT_URL)}. Start the LiteRT-LM server before chatting.",
-    ))
+    readiness = model_readiness(runtime)
+    checks.append(_check("model endpoint", readiness["status"], readiness["detail"]))
 
     checks.append(_check(
         "optional browser",

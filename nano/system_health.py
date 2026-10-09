@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 from . import config, scheduler
 from .db import rows
-from .runtime import status as runtime_status
+from .runtime import status as runtime_status, model_readiness
 from .voice import voice_status
 
 
@@ -36,15 +36,16 @@ def system_health():
 
     try:
         runtime = runtime_status()
-        model_state = "ok" if runtime.get("reachable") else "warn"
+        readiness = model_readiness(runtime)
         checks.append({
             "name": "model",
-            "status": model_state,
-            "detail": "LiteRT-LM endpoint reachable." if runtime.get("reachable") else "LiteRT-LM endpoint is not reachable.",
+            "status": readiness["status"],
+            "detail": readiness["detail"],
             "binary_found": bool(runtime.get("binary")),
             "configured_url": runtime.get("configured_url", config.LITERT_URL),
             "model": runtime.get("model", config.LITERT_MODEL),
             "loaded_models": runtime.get("models", [])[:20],
+            "model_loaded": readiness.get("model_loaded"),
         })
     except Exception as exc:
         checks.append({"name": "model", "status": "warn", "detail": f"Runtime check failed: {type(exc).__name__}: {exc}"[:500]})

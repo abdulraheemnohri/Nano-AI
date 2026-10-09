@@ -1,6 +1,6 @@
 import json
 
-from nano import config, db, doctor
+from nano import config, db, doctor, runtime
 
 
 def _configure_doctor_paths(tmp_path, monkeypatch):
@@ -58,3 +58,69 @@ def test_doctor_flags_remote_binding_without_token(tmp_path, monkeypatch):
     security = next(item for item in report["checks"] if item["name"] == "API security")
     assert security["status"] == "fail"
     assert "NANO_API_TOKEN" in security["detail"]
+
+
+def test_doctor_distinguishes_unreachable_endpoint_from_unserved_model(tmp_path, monkeypatch):
+    _configure_doctor_paths(tmp_path, monkeypatch)
+    monkeypatch.delenv("NANO_API_TOKEN", raising=False)
+
+    def endpoint_check():
+        return next(item for item in doctor.run_checks()["checks"] if item["name"] == "model endpoint")
+
+    monkeypatch.setattr(
+        doctor, "runtime_status",
+        lambda: {"binary": True, "reachable": False, "configured_url": "http://127.0.0.1:9379",
+                 "model": "qwen3-1.7b", "models": [], "endpoint_error": "Connection refused"},
+    )
+    endpoint = endpoint_check()
+    assert endpoint["status"] == "warn"
+    assert "nano-ai litert-lm" in endpoint["detail"]
+    assert "Connection refused" in endpoint["detail"]
+
+    monkeypatch.setattr(
+        doctor, "runtime_status",
+        lambda: {"binary": True, "reachable": True, "configured_url": "http://127.0.0.1:9379",
+                 "model": "qwen3-1.7b", "models": ["other-model"]},
+    )
+    endpoint = endpoint_check()
+    assert endpoint["status"] == "warn"
+    assert "nano-ai download-model" in endpoint["detail"]
+
+    monkeypatch.setattr(
+        doctor, "runtime_status",
+        lambda: {"binary": True, "reachable": True, "configured_url": "http://127.0.0.1:9379",
+                 "model": "qwen3-1.7b", "models": []},
+    )
+    endpoint = endpoint_check()
+    assert endpoint["status"] == "warn"
+    assert "serves no models" in endpoint["detail"]
+
+    monkeypatch.setattr(
+        doctor, "runtime_status",
+        lambda: {"binary": True, "reachable": True, "configured_url": "http://127.0.0.1:9379",
+                 "model": "qwen3-1.7b", "models": ["qwen3-1.7b"]},
+    )
+    endpoint = endpoint_check()
+    assert endpoint["status"] == "ok"
+    assert "is served" in endpoint["detail"]
+
+
+def test_model_readiness_reports_install_hint_without_binary():
+    result = runtime.model_readiness({
+        "reachable": False, "binary": False,
+        "configured_url": "http://127.0.0.1:9379", "model": "qwen3-1.7b",
+    })
+    assert result["status"] == "warn"
+    assert result["model_loaded"] is False
+    assert "pip install -U litert-lm" in result["detail"]
+    assert "nano-ai litert-lm" in result["detail"]
+
+
+def test_model_readiness_matches_model_ids_case_insensitively():
+    result = runtime.model_readiness({
+        "reachable": True, "binary": True,
+        "configured_url": "http://127.0.0.1:9379",
+        "model": "Qwen3-1.7B", "models": ["qwen3-1.7b"],
+    })
+    assert result["status"] == "ok"
+    assert result["model_loaded"] is True
