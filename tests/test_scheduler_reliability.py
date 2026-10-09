@@ -92,3 +92,13 @@ def test_manual_retry_reenables_job_and_clears_error(tmp_path, monkeypatch):
     assert retried["next_run_at"]
     with pytest.raises(KeyError):
         retry_job(99999)
+
+
+def test_manual_retry_refuses_to_duplicate_an_active_run(tmp_path, monkeypatch):
+    setup_scheduler_db(tmp_path, monkeypatch)
+    job = create_job("Already running", "assistant_prompt", {"prompt": "Run"}, 3600)
+    run("UPDATE scheduled_jobs SET claimed_at=CURRENT_TIMESTAMP WHERE id=?", (job["id"],))
+    run("INSERT INTO scheduled_runs(job_id,status,result,attempt) VALUES(?,?,?,?)", (job["id"], "running", "", 1))
+
+    with pytest.raises(ValueError, match="already running"):
+        retry_job(job["id"])
