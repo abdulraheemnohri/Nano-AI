@@ -10,6 +10,7 @@ def test_explicit_tool_intent():
     assert _explicit_tool_request("convert 1 km to m") == ("unit_convert", {"value": 1.0, "from_unit": "km", "to_unit": "m"})
     assert _explicit_tool_request("search my memory for solar") == ("memory_search", {"query": "solar"})
     assert _explicit_tool_request("Can you tell me a story?") is None
+    assert _explicit_tool_request("what is your name") is None
 
 
 def test_chat_dispatches_explicit_calculation_without_model(tmp_path, monkeypatch):
