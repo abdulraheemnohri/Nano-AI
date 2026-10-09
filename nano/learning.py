@@ -117,3 +117,46 @@ def feedback_summary():
     return {key: int(value or 0) for key, value in row[0].items()} if row else {
         "total": 0, "helpful": 0, "unhelpful": 0, "corrections": 0
     }
+
+
+
+def quality_report():
+    """Return descriptive local feedback metrics; never claim causal model improvement."""
+    summary = feedback_summary()
+    total = summary["total"]
+    rated = summary["helpful"] + summary["unhelpful"]
+    summary["helpful_rate_percent"] = round(summary["helpful"] * 100 / rated, 1) if rated else None
+    summary["correction_rate_percent"] = round(summary["corrections"] * 100 / total, 1) if total else None
+    windows = rows(
+        "SELECT "
+        "SUM(CASE WHEN created_at >= datetime('now','-7 days') THEN 1 ELSE 0 END) AS recent_total, "
+        "SUM(CASE WHEN created_at >= datetime('now','-7 days') AND rating=1 THEN 1 ELSE 0 END) AS recent_helpful, "
+        "SUM(CASE WHEN created_at >= datetime('now','-7 days') AND rating=-1 THEN 1 ELSE 0 END) AS recent_unhelpful, "
+        "SUM(CASE WHEN created_at < datetime('now','-7 days') AND created_at >= datetime('now','-14 days') THEN 1 ELSE 0 END) AS previous_total, "
+        "SUM(CASE WHEN created_at < datetime('now','-7 days') AND created_at >= datetime('now','-14 days') AND rating=1 THEN 1 ELSE 0 END) AS previous_helpful, "
+        "SUM(CASE WHEN created_at < datetime('now','-7 days') AND created_at >= datetime('now','-14 days') AND rating=-1 THEN 1 ELSE 0 END) AS previous_unhelpful "
+        "FROM response_feedback"
+    )
+    window = {key: int(value or 0) for key, value in (windows[0] if windows else {}).items()}
+    recent_rated = window["recent_helpful"] + window["recent_unhelpful"]
+    previous_rated = window["previous_helpful"] + window["previous_unhelpful"]
+    recent_rate = round(window["recent_helpful"] * 100 / recent_rated, 1) if recent_rated else None
+    previous_rate = round(window["previous_helpful"] * 100 / previous_rated, 1) if previous_rated else None
+    summary.update({
+        "last_7_days": window["recent_total"],
+        "previous_7_days": window["previous_total"],
+        "last_7_days_helpful_rate_percent": recent_rate,
+        "previous_7_days_helpful_rate_percent": previous_rate,
+        "helpful_rate_change_percentage_points": round(recent_rate - previous_rate, 1) if recent_rate is not None and previous_rate is not None else None,
+    })
+    summary["daily"] = rows(
+        "SELECT date(created_at) AS day, COUNT(*) AS total, "
+        "SUM(CASE WHEN rating=1 THEN 1 ELSE 0 END) AS helpful, "
+        "SUM(CASE WHEN rating=-1 THEN 1 ELSE 0 END) AS unhelpful, "
+        "SUM(CASE WHEN correction<>'' THEN 1 ELSE 0 END) AS corrections "
+        "FROM response_feedback WHERE created_at >= datetime('now','-13 days') "
+        "GROUP BY date(created_at) ORDER BY day"
+    )
+    summary["daily"] = [{key: (int(value or 0) if key in {"total", "helpful", "unhelpful", "corrections"} else value) for key, value in item.items()} for item in summary["daily"]]
+    summary["last_feedback_at"] = rows("SELECT MAX(created_at) AS value FROM response_feedback")[0]["value"] if total else None
+    return summary
