@@ -29,7 +29,7 @@ def test_update_recovery_manifest_is_valid_json_with_real_trailing_newline(tmp_p
     _, path = updates._recovery_paths()
     raw = path.read_text(encoding="utf-8")
 
-    assert raw.endswith("\\n")
-    assert not raw.endswith("\\\\n")
+    assert raw.endswith("\n")
+    assert not raw.endswith("\\n")
     assert json.loads(raw) == manifest
 
