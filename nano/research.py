@@ -24,7 +24,7 @@ class _TextExtractor(HTMLParser):
         self.in_title = False
 
     def handle_starttag(self, tag, attrs):
-        if tag in self.BLOCKED:
+        if self.blocked or tag in self.BLOCKED:
             self.blocked += 1
         if tag == "title":
             self.in_title = True
