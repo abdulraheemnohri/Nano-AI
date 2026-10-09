@@ -28,3 +28,15 @@ def test_fetch_page_limits_to_readable_page(monkeypatch):
     assert page["title"] == "Guide"
     assert page["url"] == "https://example.com/a"
     assert page["characters"] > 80
+
+
+
+def test_text_extractor_keeps_nested_tags_inside_script_blocked():
+    parser = _TextExtractor()
+    parser.feed(
+        "<body><script><div>secret script text</div></script>"
+        "<p>Visible useful article text that is long enough.</p></body>"
+    )
+    text = " ".join(parser.parts)
+    assert "secret script text" not in text
+    assert "Visible useful article text" in text
