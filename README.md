@@ -180,3 +180,8 @@ The System page can check the official `abdulraheemnohri/Nano-AI` main branch. A
 ### Update recovery and rollback
 
 The System page's GitHub updater now creates an integrity-checked SQLite snapshot before applying a fast-forward update and records a recovery manifest with the previous/current commit and dependency manifest changes. The UI can roll code back to the recorded previous commit after explicit confirmation. Restoring the pre-update database is a separate, additional confirmation because it overwrites current data. Rollback requires the clean `main` branch and the exact recorded updated HEAD; it refuses to reset if the checkout has moved. Review and back up current data before recovery. Package installation and restart remain manual.
+
+
+### Memory consolidation review
+
+The Memory page can scan for exact duplicates and highly similar active memories, then queue suggestions for manual review. Nano never merges memories during scanning. Approving a proposal creates a new active memory and marks its source records as `merged` in one SQLite transaction; rejecting leaves the originals untouched. The proposal text is editable before approval. API routes are `GET /api/memories/duplicates`, `GET /api/memories/consolidation`, `POST /api/memories/consolidation/scan`, and the proposal-specific `approve` / `reject` endpoints.
