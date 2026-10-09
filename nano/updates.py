@@ -2,7 +2,7 @@
 
 Checking updates is read-only. Applying an update requires an explicit approval,
 a clean working tree, the main branch, and the expected official GitHub origin.
-The process never installs dependencies or restarts the running service automatically.
+Restarts remain manual. Dependency installation runs only when explicitly requested together with the update approval.
 """
 import json
 import subprocess
@@ -67,11 +67,29 @@ def check_update():
         "latest_url": data.get("html_url", f"https://github.com/{OWNER}/{REPOSITORY}/commit/{latest}"),
         "update_available": latest != checkout["local_sha"],
         "can_apply": checkout["branch"] == "main" and not checkout["dirty"],
-        "policy": "Check is read-only. Apply requires explicit approval and a clean main branch; restart and dependency updates remain manual.",
+        "policy": "Check is read-only. Apply requires explicit approval and a clean main branch; changed dependencies can be installed automatically only when requested; restart remains manual.",
     }
 
 
-def apply_update(approved=False):
+def _install_dependencies():
+    """Best-effort, explicitly requested dependency install after a fast-forward update."""
+    import sys
+    requirements = config.ROOT / "requirements.txt"
+    command = [sys.executable, "-m", "pip", "install", "--quiet", "--disable-pip-version-check"]
+    if requirements.is_file():
+        command += ["-r", str(requirements)]
+    else:
+        command += ["-e", str(config.ROOT)]
+    try:
+        result = subprocess.run(command, capture_output=True, text=True, timeout=900, check=False)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return {"attempted": True, "ok": False, "error": f"Dependency install failed: {exc}"}
+    if result.returncode:
+        return {"attempted": True, "ok": False, "error": (result.stderr or result.stdout or "pip install failed.")[-1000:]}
+    return {"attempted": True, "ok": True, "mode": "requirements" if requirements.is_file() else "editable"}
+
+
+def apply_update(approved=False, install_dependencies=False):
     if approved is not True:
         raise PermissionError("Explicit approval is required to apply a GitHub update.")
     before = check_update()
@@ -94,6 +112,7 @@ def apply_update(approved=False):
             raise RuntimeError("Updated checkout does not match the verified remote commit.")
         dependency_files = _git("diff", "--name-only", previous_sha, remote_sha, "--", "pyproject.toml", "requirements.txt", "requirements-dev.txt", "uv.lock", "poetry.lock")
         manifest = {"repository": f"{OWNER}/{REPOSITORY}", "previous_sha": previous_sha, "current_sha": remote_sha, "database_snapshot": database_snapshot, "dependency_files_changed": dependency_files.splitlines() if dependency_files else [], "created_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat()}
+        manifest["dependency_install"] = _install_dependencies() if (install_dependencies and manifest["dependency_files_changed"]) else {"attempted": False, "ok": None}
         _write_recovery_manifest(manifest)
     except Exception as exc:
         try:
@@ -104,12 +123,19 @@ def apply_update(approved=False):
             pass
         raise RuntimeError(f"Update did not complete safely: {exc}") from exc
     dependency_files = manifest["dependency_files_changed"]
+    install = manifest.get("dependency_install", {"attempted": False, "ok": None})
+    if install.get("attempted"):
+        message = "Fast-forward update applied. Automatic dependency install " + ("succeeded. Restart Nano AI manually." if install.get("ok") else "FAILED: " + str(install.get("error"))[:300] + " Install dependencies manually, then restart.")
+    elif dependency_files:
+        message = "Fast-forward update applied. Dependency files changed; install them manually (or enable automatic install) and restart Nano AI."
+    else:
+        message = "Fast-forward update applied. Restart Nano AI manually."
     return {
         "updated": True, **manifest,
         "restart_required": True,
         "dependency_install_required": bool(dependency_files),
         "recovery_manifest": str(_recovery_paths()[1]),
-        "message": "Fast-forward update applied. Review dependency changes and restart Nano AI manually.",
+        "message": message,
     }
 
 # Recovery helpers are deliberately separate from the fast-forward update path.

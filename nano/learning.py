@@ -61,9 +61,10 @@ def memories(limit=20):
     )
 
 
-def events(limit=100):
+def events(limit=100, offset=0):
     limit = max(1, min(int(limit), 500))
-    return rows("SELECT * FROM learning_events ORDER BY id DESC LIMIT ?", (limit,))
+    safe_offset = max(0, int(offset))
+    return rows("SELECT * FROM learning_events ORDER BY id DESC LIMIT ? OFFSET ?", (limit, safe_offset))
 
 
 def delete_memory(mid):

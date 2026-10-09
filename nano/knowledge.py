@@ -11,5 +11,7 @@ def ingest(text,source="local"):
     run("INSERT INTO learning_events(event_type,input_text,result) VALUES(?,?,?)",("knowledge_import",clean,str(count)))
     return count
 
-def recent(limit=50):
-    return rows("SELECT * FROM memories WHERE kind='knowledge' AND status='active' ORDER BY id DESC LIMIT ?",(limit,))
+def recent(limit=50, offset=0):
+    limit = max(1, min(int(limit), 500))
+    safe_offset = max(0, int(offset))
+    return rows("SELECT * FROM memories WHERE kind='knowledge' AND status='active' ORDER BY id DESC LIMIT ? OFFSET ?",(limit,safe_offset))

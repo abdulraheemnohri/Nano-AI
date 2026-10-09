@@ -34,8 +34,25 @@ def validate_import_request(repo, filename, model_id=None):
     return repo, filename, target
 
 
+_IMPORT_MIN_FREE_BYTES = 2 * 1024 * 1024 * 1024
+
+
+def ensure_disk_space(required_bytes=None):
+    """Refuse model imports when the model directory has too little free space."""
+    required = int(required_bytes or _IMPORT_MIN_FREE_BYTES)
+    config.MODEL_DIR.mkdir(parents=True, exist_ok=True)
+    usage = shutil.disk_usage(str(config.MODEL_DIR))
+    if usage.free < required:
+        raise ValueError(
+            "Not enough free disk space for a model import: about %.1f GB available, %.1f GB required under %s. Free up space and retry."
+            % (usage.free / 1024**3, required / 1024**3, config.MODEL_DIR)
+        )
+    return {"free_bytes": usage.free, "required_bytes": required}
+
+
 def import_model(repo=MODEL_REPO, filename=MODEL_FILE, model_id=None):
     repo, filename, target = validate_import_request(repo, filename, model_id)
+    ensure_disk_space()
     binary = litert_lm_binary()
     if not binary:
         raise RuntimeError("litert-lm was not found. Install it with: python -m pip install -U litert-lm")
@@ -206,6 +223,7 @@ def _auto_setup_worker():
 
 
 def start_auto_setup():
+    ensure_disk_space()
     # Treat queued and running as active so rapid clicks cannot launch concurrent imports.
     with _AUTO_LOCK:
         if _AUTO_STATE["status"] in {"queued", "running"}:
@@ -221,6 +239,7 @@ def start_auto_setup():
 def start_import_task(repo, filename, model_id=None):
     """Queue a validated custom model import without blocking the HTTP request."""
     repo, filename, target = validate_import_request(repo, filename, model_id)
+    ensure_disk_space()
     with _AUTO_LOCK:
         if _AUTO_STATE["status"] in {"queued", "running"}:
             raise RuntimeError("A model setup/import task is already active.")

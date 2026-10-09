@@ -86,6 +86,7 @@ class ProactiveTalkIn(BaseModel):
     prompt:str|None = Field(default=None,max_length=1000)
 class UpdateApplyIn(BaseModel):
     approved:bool = False
+    install_dependencies:bool = False
 class UpdateRollbackIn(BaseModel):
     approved:bool = False
     restore_database:bool = False
@@ -160,7 +161,7 @@ def system_update_check():
     except RuntimeError as e: raise HTTPException(503,str(e))
 @app.post("/api/system/update/apply")
 def system_update_apply(x:UpdateApplyIn):
-    try: return apply_update(x.approved)
+    try: return apply_update(x.approved, x.install_dependencies)
     except PermissionError as e: raise HTTPException(403,str(e))
     except RuntimeError as e: raise HTTPException(409,str(e))
 
@@ -245,7 +246,7 @@ def memory_consolidation_reject(proposal_id:int):
     except ValueError as e:
         raise HTTPException(404,str(e))
 @app.get("/api/learning/events")
-def learning_events(): return events(100)
+def learning_events(limit:int=100,offset:int=0): return events(limit,offset)
 @app.get("/api/learning/feedback-summary")
 def learning_feedback_summary(): return feedback_summary()
 @app.get("/api/learning/quality")
@@ -279,7 +280,9 @@ def skill_enabled(name:str,enabled:bool=True):
     return {"ok":True}
 
 @app.get("/api/knowledge")
-def knowledge(): return recent(int_value("knowledge_limit", 100))
+def knowledge(limit:int=0,offset:int=0):
+    bounded = int_value("knowledge_limit", 100) if limit <= 0 else max(1, min(500, limit))
+    return recent(bounded, offset)
 
 class WebSearchIn(BaseModel):
     query: str = Field(min_length=1, max_length=300)
@@ -475,7 +478,10 @@ def model_registry(): return registry_models()
 
 @app.post("/api/models/auto-setup")
 def model_auto_setup():
-    state=start_auto_setup()
+    try:
+        state=start_auto_setup()
+    except ValueError as e:
+        raise HTTPException(400,str(e))
     if state["status"] == "error": raise HTTPException(503,state["message"])
     return state
 

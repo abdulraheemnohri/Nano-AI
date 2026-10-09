@@ -152,3 +152,11 @@ Audit scope: current `main` source tree. This inventory distinguishes implemente
 - `GET /api/conversations` accepts a non-negative `offset` for paging alongside the bounded `limit`.
 - The Talk sidebar loads up to 200 conversations at a time and appends a "Load more conversations" button when a full page is returned; older conversations load on demand instead of inflating the initial page.
 - Coverage: `tests/test_conversations_api.py` (offset paging, disjoint pages, negative offset clamped) and `tests/test_web_ui.py` (paging wiring present).
+
+## Update dependency install, pagination, theme toggle, disk guard (Phase 5 improvement)
+
+- Updates: `apply_update` accepts an explicit `install_dependencies` flag; when dependency files changed and the flag is set, pip installs from `requirements.txt` (fallback: editable install) with a 900-second timeout, and the outcome is recorded in the recovery manifest and the API response. Restart remains manual: an in-process auto-restart would kill the API mid-request, so it is intentionally not automated.
+- `GET /api/learning/events` and `GET /api/knowledge` accept bounded `limit` and non-negative `offset`; the Learning and Knowledge pages load 50 items at a time with a "Load more" button.
+- Sidebar theme toggle button persists the choice through the existing `theme` setting.
+- `ensure_disk_space()` in the model manager refuses imports with under ~2 GB free space in the model directory (auto setup returns 400 via the API; import task returns 400).
+- Coverage: `tests/test_pagination.py`, `tests/test_model_disk_space.py`, `tests/test_updates_dependency_install.py`, and UI wiring guards in `tests/test_web_ui.py`.

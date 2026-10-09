@@ -38,3 +38,16 @@ def test_sidebar_conversation_paging_wiring():
     assert "addLoadMoreBtn" in html
     assert "m.id='moreConvs'" in html
     assert "api('/api/conversations?limit=200&offset='+convOffset)" in html
+
+
+def test_polish_ui_wiring():
+    html = web.HTML
+    assert "id='themeToggle'" in html
+    assert "b.id='moreLearning'" in html
+    assert "b.id='moreKnowledge'" in html
+    assert "async function moreLearning()" in html
+    assert "async function moreKnowledge()" in html
+    assert "id='installUpdateDeps'" in html
+    assert "install_dependencies:$('installUpdateDeps').checked" in html
+    assert "api('/api/learning/events?limit=50&offset='+learnOffset)" in html
+    assert "api('/api/knowledge?limit=50&offset='+knowledgeOffset)" in html
