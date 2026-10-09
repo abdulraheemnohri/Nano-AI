@@ -1,5 +1,5 @@
 """Offline Vosk STT and Piper TTS adapters."""
-import json, subprocess, wave
+import json, subprocess, wave, shutil
 from functools import lru_cache
 from pathlib import Path
 try:
@@ -33,3 +33,28 @@ def speak(text,outfile):
     except subprocess.TimeoutExpired as e: raise RuntimeError("Piper timed out after 60 seconds.") from e
     if p.returncode: raise RuntimeError(p.stderr.decode(errors="ignore") or "Piper failed")
     return out
+
+
+def voice_status():
+    """Report optional offline speech dependencies without importing cloud services."""
+    model_path=Path(STT_MODEL).expanduser() if STT_MODEL else None
+    voice_path=Path(PIPER_VOICE).expanduser() if PIPER_VOICE else None
+    stt_model_exists=bool(model_path and model_path.is_dir())
+    piper_installed=bool(shutil.which(PIPER_COMMAND))
+    piper_voice_exists=bool(voice_path and voice_path.is_file())
+    return {
+        "stt": {
+            "engine": "vosk",
+            "installed": vosk is not None,
+            "model_exists": stt_model_exists,
+            "ready": vosk is not None and stt_model_exists,
+            "offline": True,
+        },
+        "tts": {
+            "engine": "piper",
+            "installed": piper_installed,
+            "voice_exists": piper_voice_exists,
+            "ready": piper_installed and piper_voice_exists,
+            "offline": True,
+        },
+    }
