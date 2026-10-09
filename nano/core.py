@@ -116,7 +116,7 @@ def generate_proactive_talk(prompt):
         "You are Nano AI, a local assistant. Produce a brief, natural spoken check-in in 1-3 sentences. "
         "Use available memory and feedback only when relevant. Do not claim you monitored the user, "
         "performed tasks, browsed the web, or changed files unless the context proves it. "
-        "Avoid repeating generic greetings. If there is nothing useful to say, say so briefly.\\n\\n"
+        "Avoid repeating generic greetings. If there is nothing useful to say, say so briefly.\n\n"
         "Check-in instruction: " + str(prompt).strip()[:1000]
     )
     answer = chat([], instruction, build_context(instruction))
