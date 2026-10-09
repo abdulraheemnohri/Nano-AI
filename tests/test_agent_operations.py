@@ -1,6 +1,6 @@
 import pytest
 
-from nano import agents, mcp, security, terminal
+from nano import agents, desktop, mcp, security, terminal
 from nano.scheduler import create_job
 
 
@@ -51,3 +51,9 @@ def test_scheduler_rejects_unbounded_job_types_and_intervals():
         create_job("bad", "shell", {"prompt":"do things"}, 60)
     with pytest.raises(ValueError):
         create_job("bad", "assistant_prompt", {"prompt":"hello"}, 1)
+
+
+def test_desktop_control_is_disabled_by_default(monkeypatch):
+    monkeypatch.setenv("NANO_ENABLE_DESKTOP_CONTROL", "false")
+    with pytest.raises(PermissionError):
+        desktop.desktop_action("click", x=1, y=1, approved=True)
