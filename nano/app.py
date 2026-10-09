@@ -20,7 +20,7 @@ from .web import HTML
 from .voice import transcribe_wav,speak,voice_status
 from .tools import list_tools, run_tool, set_enabled as set_tool_enabled
 from .security import configured_token, is_loopback_host
-from .scheduler import start_scheduler, list_jobs, list_runs, create_job, update_job, delete_job
+from .scheduler import start_scheduler, stop_scheduler, list_jobs, list_runs, create_job, update_job, delete_job
 from .agents import ROLES, delegate, delegate_many
 from .terminal import run_command
 from .browser import browser_action
@@ -36,9 +36,13 @@ def startup():
     seed()
     start_scheduler()
 
+@app.on_event("shutdown")
+def shutdown():
+    stop_scheduler()
+
 @app.middleware("http")
 async def protect_api(request: Request, call_next):
-    if request.url.path.startswith("/api/") or request.url.path == "/mcp":
+    if (request.url.path.startswith("/api/") or request.url.path == "/mcp") and request.url.path != "/api/channels/telegram/webhook":
         token = configured_token()
         peer = request.client.host if request.client else ""
         remote_request = bool(peer) and peer not in {"testclient", "localhost", "::ffff:127.0.0.1"} and not is_loopback_host(peer)
