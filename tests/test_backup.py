@@ -1,4 +1,5 @@
 import sqlite3
+from pathlib import Path
 
 import pytest
 from fastapi import HTTPException
@@ -25,7 +26,7 @@ def test_backup_creates_valid_sqlite_snapshot(tmp_path, monkeypatch):
         finally:
             snapshot.close()
     finally:
-        __import__("pathlib").Path(response.path).unlink(missing_ok=True)
+        Path(response.path).unlink(missing_ok=True)
 
 
 def test_backup_returns_404_when_database_is_missing(tmp_path, monkeypatch):
