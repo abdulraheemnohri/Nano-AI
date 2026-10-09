@@ -19,6 +19,10 @@ def test_all_settings_have_descriptions_and_defaults():
     ("memory_limit", "101"),
     ("knowledge_limit", "5001"),
     ("voice_enabled", "sometimes"),
+    ("autonomous_talk_interval_minutes", "5"),
+    ("autonomous_talk_interval_minutes", "1441"),
+    ("autonomous_talk_prompt", ""),
+    ("autonomous_talk_prompt", "x" * 1001),
     ("unknown", "value"),
 ])
 def test_invalid_setting_values_are_rejected(key, value):
@@ -31,3 +35,6 @@ def test_settings_normalize_valid_boolean_language_and_ranges():
     assert _normalize("language", "Urdu") == "Urdu"
     assert _normalize("theme", "system") == "system"
     assert _normalize("knowledge_limit", "5000") == "5000"
+    assert _normalize("autonomous_talk_interval_minutes", "10") == "10"
+    assert _normalize("autonomous_talk_enabled", "true") == "true"
+    assert _normalize("autonomous_talk_prompt", "Say hello briefly.") == "Say hello briefly."
