@@ -36,7 +36,7 @@ Audit scope: current `main` source tree. This inventory distinguishes implemente
 7. **Research network pinning:** HTTPS sockets connect to a validated, pinned public IP with hostname TLS verification; redirects are revalidated and repinned. DNS rebinding tests cover mixed public/private DNS answers. Network-layer egress controls remain recommended.
 8. **Restore workflow:** in-app restore checks integrity and schema, saves a recovery snapshot, and attempts rollback if applying the restore fails. Test restore behavior with representative real backups before production use.
 9. **Request protections:** body-size limits use Content-Length and rate limits are per process; proxies should enforce limits for chunked requests and multi-worker deployments.
-10. **Production operations:** no multi-user tenancy, roles/permissions, secret vault, distributed scheduler, job retry policy, or audit-grade authorization.
+10. **Production operations:** no multi-user tenancy, roles/permissions, secret vault, distributed scheduler, forcibly cancellable per-job timeout, or audit-grade authorization. Retry policy is bounded and in-process only.
 11. **Verification:** run `python -m pip install -e ".[test]"` and `python -m pytest -q`; confirm GitHub Actions before release.
 
 ## Security and recovery checklist
