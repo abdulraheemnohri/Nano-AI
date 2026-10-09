@@ -10,7 +10,7 @@ Audit scope: current `main` source tree. This inventory distinguishes implemente
 | Local data | Memories, knowledge ingestion/search, learning event history | `nano/memory.py`, `nano/knowledge.py`, `nano/learning.py` |
 | Skills | Enabled skills and proposal approval/rejection | `nano/skills.py`, `/api/skills` |
 | Built-in tools | Bounded calculator, time, unit conversion, text stats, memory/knowledge search | `nano/tools.py`, `/api/tools` |
-| Model management | Validated background import, cancellation endpoint, phase/progress status | `nano/model_manager.py`, `/api/models/auto-setup`, `/api/models/import-task/cancel` |
+| Model management | Validated background import, cancellation, best-effort percentage/estimate, persistent task status and interrupted-task recovery | `nano/model_manager.py`, `/api/models/auto-setup`, `/api/models/import-task/cancel` |
 | Scheduler | Persistent interval jobs, enable/pause/delete, run history; assistant-prompt jobs only | `nano/scheduler.py`, `/api/scheduler/jobs`, `/api/scheduler/runs` |
 | Delegation | Researcher/coder/planner/reviewer/writer specialist prompts, bounded task size and timeout | `nano/agents.py`, `/api/agents/delegate` |
 | Authentication | Bearer token / X-Nano-Token, remote peer guard, CLI remote-bind guard | `nano/security.py`, `nano/app.py`, `nano/cli.py` |
@@ -21,7 +21,8 @@ Audit scope: current `main` source tree. This inventory distinguishes implemente
 | MCP | Minimal JSON-RPC `initialize`, `ping`, `tools/list`, and `tools/call` over HTTP | `nano/mcp.py`, `POST /mcp` |
 | Research | HTTPS search, bounded readable-page extraction and local ingestion | `nano/research.py`, `/api/research` |
 | Voice | Optional local Vosk transcription and Piper speech synthesis | `nano/voice.py`, `/api/voice` |
-| Portability | JSON export and consistent SQLite backup snapshot | `/api/export`, `/api/backup` |
+| Data recovery | JSON export, consistent SQLite snapshot, validated restore, integrity checks and pre-restore recovery snapshot | `/api/export`, `/api/backup`, `/api/restore` |
+| Settings | Typed schema with defaults/descriptions, validated ranges and active theme/voice/learning/model parameters | `nano/settings.py`, `/api/settings/schema` |
 | UI | Talk, memory, learning, skills, tools, knowledge, research, model, automation/agents, settings and system | `nano/web.py` |
 
 ## Important limitations
@@ -32,10 +33,11 @@ Audit scope: current `main` source tree. This inventory distinguishes implemente
 4. **Computer control:** Playwright browser control is optional and host-allowlisted. Desktop control is separately opt-in and approval-gated; it is not a full autonomous desktop agent, and sessions are not persistent.
 5. **Messaging scope:** Telegram requires a bot token and webhook secret. Generic outgoing webhook delivery is supported for Slack/Discord or explicitly allowlisted HTTPS hosts. WhatsApp, email, Discord bot events, Slack event ingestion, and persistent channel polling are not implemented.
 6. **MCP compatibility:** this is a minimal JSON-RPC HTTP endpoint, not a complete implementation of every MCP transport/version or OAuth flow.
-7. **Research network pinning:** robust pinned-IP transport against DNS rebinding remains a hardening task.
-8. **Restore workflow:** backup download exists; in-app restore/rollback is not implemented.
-9. **Production operations:** no multi-user tenancy, roles/permissions, secret vault, distributed scheduler, job retry policy, or audit-grade authorization.
-10. **Verification:** run `python -m pip install -e ".[test]"` and `python -m pytest -q`; confirm GitHub Actions before release. This change set has not been represented as runtime-tested unless a CI result confirms it.
+7. **Research network pinning:** HTTPS sockets connect to a validated, pinned public IP with hostname TLS verification; redirects are revalidated and repinned. DNS rebinding tests cover mixed public/private DNS answers. Network-layer egress controls remain recommended.
+8. **Restore workflow:** in-app restore checks integrity and schema, saves a recovery snapshot, and attempts rollback if applying the restore fails. Test restore behavior with representative real backups before production use.
+9. **Request protections:** body-size limits use Content-Length and rate limits are per process; proxies should enforce limits for chunked requests and multi-worker deployments.
+10. **Production operations:** no multi-user tenancy, roles/permissions, secret vault, distributed scheduler, job retry policy, or audit-grade authorization.
+11. **Verification:** run `python -m pip install -e ".[test]"` and `python -m pytest -q`; confirm GitHub Actions before release.
 
 ## Security and recovery checklist
 
