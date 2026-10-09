@@ -26,6 +26,9 @@ def main():
         try: print("LiteRT-LM model imported:",import_model(a.repo,a.file,a.id))
         except RuntimeError as e: raise SystemExit(str(e))
     elif a.cmd=="web":
+        import os
+        if a.host not in {"127.0.0.1","localhost","::1"} and not os.getenv("NANO_API_TOKEN","").strip():
+            raise SystemExit("Refusing remote bind without authentication. Set a strong NANO_API_TOKEN first.")
         import uvicorn; uvicorn.run("nano.app:app",host=a.host,port=a.port)
     elif a.cmd=="litert-lm":
         b=litert_binary()
