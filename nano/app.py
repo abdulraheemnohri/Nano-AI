@@ -496,6 +496,11 @@ def scheduler_enable(job_id:int, enabled:bool=True):
 @app.delete("/api/scheduler/jobs/{job_id}")
 def scheduler_delete(job_id:int): return delete_job(job_id)
 
+@app.post("/api/scheduler/jobs/{job_id}/retry")
+def scheduler_retry(job_id:int):
+    try: return retry_job(job_id)
+    except KeyError as e: raise HTTPException(404,str(e))
+
 @app.get("/api/scheduler/runs")
 def scheduler_runs(job_id:int|None=None,limit:int=100): return list_runs(job_id,limit)
 
