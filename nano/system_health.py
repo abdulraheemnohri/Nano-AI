@@ -93,8 +93,8 @@ def system_health():
     except Exception as exc:
         checks.append({"name": "voice", "status": "info", "detail": f"Optional voice status unavailable: {type(exc).__name__}"})
 
-    order = {"fail": 0, "warn": 1, "info": 2, "ok": 3}
-    overall = min(checks, key=lambda item: order.get(item["status"], 2))["status"] if checks else "info"
+    states = {item["status"] for item in checks}
+    overall = "fail" if "fail" in states else "warn" if "warn" in states else "ok"
     return {
         "overall": overall,
         "checked_at": datetime.now(timezone.utc).isoformat(),
