@@ -157,7 +157,7 @@ def _loop():
                     except Exception:
                         pass
                 next_run = time.monotonic() + interval
-        _stop.wait(min(5, interval))
+        _stop.wait(min(1, interval))
 
 
 def start_supervisor():
