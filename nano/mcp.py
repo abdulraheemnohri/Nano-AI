@@ -16,6 +16,11 @@ def handle_message(message):
     if message.get("jsonrpc") != "2.0" or not isinstance(message.get("method"), str):
         return _error(request_id, -32600, "Invalid Request")
 
+    # JSON-RPC notifications have no id and must never receive a response.
+    # The supported initialized notification is a no-op; unknown notifications are ignored.
+    if "id" not in message:
+        return None
+
     # This dispatcher implements named MCP parameters, which must be objects.
     # Reject malformed values explicitly instead of letting .get() raise a 500.
     params = message.get("params", {})
