@@ -34,19 +34,43 @@ def _ensure_db():
 
 
 def _event(severity, category, summary, details=None):
-    _ensure_db()
-    with connect() as conn:
-        conn.execute(
-            "INSERT INTO supervisor_events(severity,category,summary,details) VALUES(?,?,?,?)",
-            (severity, category, str(summary)[:500], json.dumps(details or {}, ensure_ascii=False)[:4000]),
-        )
+    """Persist an event when possible; logging must never hide the health failure."""
+    try:
+        _ensure_db()
+        with connect() as conn:
+            conn.execute(
+                "INSERT INTO supervisor_events(severity,category,summary,details) VALUES(?,?,?,?)",
+                (severity, category, str(summary)[:500], json.dumps(details or {}, ensure_ascii=False)[:4000]),
+            )
+        return True
+    except Exception:
+        # The current health report remains the diagnostic source if SQLite is unavailable.
+        return False
 
 
 def run_supervisor_cycle(force=False):
     """Inspect health and apply only bounded recovery to Nano-owned worker threads."""
     global _last_cycle, _last_report, _last_scheduler_restart
-    _ensure_db()
     checks, actions = [], []
+    try:
+        _ensure_db()
+    except Exception as exc:
+        # A broken database must not prevent the supervisor from reporting the failure.
+        report = {
+            "status": "error",
+            "checked_at": datetime.now(timezone.utc).isoformat(),
+            "checks": [
+                {"name": "sqlite_integrity", "status": "error", "detail": type(exc).__name__ + ": " + str(exc)[:300]},
+                {"name": "required_tables", "status": "error", "detail": "Database unavailable; table checks could not run."},
+            ],
+            "actions": [],
+            "safety": {"database_auto_repair": False, "arbitrary_process_restart": False, "source_code_changes": False, "approval_bypass": False},
+            "manual_repair_required": True,
+        }
+        with _lock:
+            _last_cycle = time.time()
+            _last_report = report
+        return report
     if not force and not bool_value("background_self_check_enabled", True):
         return {"status": "disabled", "checks": [], "actions": [], "checked_at": None}
     try:
@@ -110,13 +134,18 @@ def run_supervisor_cycle(force=False):
 
 
 def supervisor_status(limit=30):
-    _ensure_db()
     bounded = max(1, min(int(limit), 100))
-    with connect() as conn:
-        events = conn.execute(
-            "SELECT id,created_at,severity,category,summary,details FROM supervisor_events ORDER BY id DESC LIMIT ?",
-            (bounded,),
-        ).fetchall()
+    db_error = None
+    try:
+        _ensure_db()
+        with connect() as conn:
+            events = conn.execute(
+                "SELECT id,created_at,severity,category,summary,details FROM supervisor_events ORDER BY id DESC LIMIT ?",
+                (bounded,),
+            ).fetchall()
+    except Exception as exc:
+        events = []
+        db_error = type(exc).__name__ + ": " + str(exc)[:300]
     decoded = []
     for item in events:
         value = dict(item)
@@ -130,10 +159,19 @@ def supervisor_status(limit=30):
         report["checks"] = list(_last_report.get("checks", []))
         report["actions"] = list(_last_report.get("actions", []))
         last_cycle = _last_cycle
+    if db_error:
+        report["status"] = "error"
+        report["database_access_error"] = db_error
+    try:
+        enabled = bool_value("background_self_check_enabled", True)
+        auto_resolver = bool_value("auto_error_resolver_enabled", True)
+        interval = int_value("background_interval_minutes", 15)
+    except Exception:
+        enabled, auto_resolver, interval = True, True, 15
     return {
-        "enabled": bool_value("background_self_check_enabled", True),
-        "auto_error_resolver_enabled": bool_value("auto_error_resolver_enabled", True),
-        "interval_minutes": int_value("background_interval_minutes", 15),
+        "enabled": enabled,
+        "auto_error_resolver_enabled": auto_resolver,
+        "interval_minutes": interval,
         "worker_alive": bool(_thread and _thread.is_alive() and not _stop.is_set()),
         "last_cycle_epoch": last_cycle,
         "latest": report,
