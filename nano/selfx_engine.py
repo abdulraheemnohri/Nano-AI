@@ -270,3 +270,46 @@ def compare_research(question, limit=100):
         "interpretation": "Lexical overlap is a triage signal only. It cannot establish truth, independence, or contradiction; inspect original sources and dates.",
         "sources": records,
     }
+
+
+def learn_from_task(task_id, topic, lesson, confidence=0.6):
+    """Persist a caller-written lesson grounded in an observed task outcome."""
+    from .selfx import record_lesson
+    found = rows(
+        "SELECT t.*, p.title AS plan_title, p.goal_id FROM selfx_tasks t "
+        "JOIN selfx_plans p ON p.id=t.plan_id WHERE t.id=?",
+        (task_id,),
+    )
+    if not found:
+        raise KeyError("Task not found.")
+    task = found[0]
+    if task["status"] not in {"completed", "failed", "blocked"}:
+        raise ValueError("A lesson can only be recorded from a completed, failed, or blocked task.")
+    return record_lesson(
+        topic,
+        lesson,
+        source=f"task:{task_id}",
+        outcome=task["status"],
+        confidence=confidence,
+        evidence=[
+            {"source": "selfx_tasks", "note": f"Task: {task['title']}; outcome: {task['status']}; result: {task.get('result', '')[:700]}"},
+            {"source": "selfx_plans", "note": f"Plan: {task['plan_title']}; goal_id: {task['goal_id']}"},
+        ],
+    )
+
+
+def propose_skill_from_lesson(lesson_id, name, description, prompt):
+    """Create a pending skill proposal linked to a saved lesson; never enable it."""
+    lesson = rows("SELECT * FROM selfx_lessons WHERE id=?", (lesson_id,))
+    if not lesson:
+        raise KeyError("Lesson not found.")
+    from .skills import propose
+    proposal_id = propose(name, description, prompt)
+    return {
+        "proposal_id": proposal_id,
+        "status": "pending",
+        "source_lesson_id": lesson_id,
+        "lesson_topic": lesson[0]["topic"],
+        "activation": "requires explicit review through the existing skill proposal approval endpoint",
+        "auto_enabled": False,
+    }
