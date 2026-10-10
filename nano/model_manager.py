@@ -235,6 +235,9 @@ def _auto_setup_worker():
             return
         with _AUTO_LOCK:
             _AUTO_STATE.update(status="running", message="Importing the default Qwen3 4B-Thinking-2507 model (about 2.1 GB). Ensure at least 3 GB free disk space and enough RAM; the 4B reasoning model may take several GB of memory.", model_id=config.LITERT_MODEL)
+        # Check disk only after checking the registry: an already-installed model
+        # should remain usable even when the disk has less than 3 GB free.
+        ensure_disk_space()
         if _CANCEL_EVENT.is_set(): raise RuntimeError("Model import cancelled by user.")
         imported = _tracked_import(MODEL_REPO, MODEL_FILE, config.LITERT_MODEL)
         with _AUTO_LOCK:
@@ -249,7 +252,8 @@ def _auto_setup_worker():
 
 
 def start_auto_setup():
-    ensure_disk_space()
+    # The worker checks the registry first and only requires import headroom
+    # when the configured model is actually missing.
     # Treat queued and running as active so rapid clicks cannot launch concurrent imports.
     with _AUTO_LOCK:
         if _AUTO_STATE["status"] in {"queued", "running"}:
