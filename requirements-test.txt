@@ -1,0 +1,2 @@
+# Core Nano AI package plus test tooling.
+-e .[test]
