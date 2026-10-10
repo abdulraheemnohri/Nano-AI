@@ -112,7 +112,7 @@ systemctl --user status nano-ai.service nano-ai-litert-lm.service
 journalctl --user -u nano-ai.service -f
 ```
 
-The user services start at login and restart on failure. For boot-before-login operation, explicitly enable lingering (this is a system-level decision):
+The user services start at login and restart on failure. The generated user units avoid system-level-only sandbox directives that can be rejected by some user managers. If an earlier install left a bad unit behind, run `nano-ai uninstall-user-service`, then `systemctl --user daemon-reload`, reinstall after updating Nano AI, and inspect the generated files with `systemd-analyze --user verify ~/.config/systemd/user/nano-ai.service ~/.config/systemd/user/nano-ai-litert-lm.service`. For boot-before-login operation, explicitly enable lingering (this is a system-level decision):
 
 ```bash
 sudo loginctl enable-linger "$USER"
