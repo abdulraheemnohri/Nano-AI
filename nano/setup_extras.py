@@ -72,11 +72,14 @@ def _install_vosk_model():
 
 def _install_piper_voice():
     PIPER_DIR.mkdir(parents=True, exist_ok=True)
+    downloaded = False
     if not PIPER_MODEL.is_file():
         _download(f"{PIPER_BASE}/en_US-lessac-medium.onnx?download=true", PIPER_MODEL)
+        downloaded = True
     if not PIPER_CONFIG.is_file():
         _download(f"{PIPER_BASE}/en_US-lessac-medium.onnx.json?download=true", PIPER_CONFIG)
-    return "already-installed" if PIPER_MODEL.exists() and PIPER_CONFIG.exists() else "downloaded"
+        downloaded = True
+    return "downloaded" if downloaded else "already-installed"
 
 
 def setup():
