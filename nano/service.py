@@ -70,7 +70,7 @@ def build_user_units(nano_executable, litert_executable):
         "",
         "[Service]",
         "Type=simple",
-        "WorkingDirectory=" + _quote(config.ROOT),
+        "WorkingDirectory=" + str(config.ROOT).replace("%", "%%").replace(" ", "\\x20"),
         env_lines,
         "ExecStart=" + _quote(nano_executable) + " web --host " + host + " --port " + str(config.PORT),
         "Restart=on-failure",
