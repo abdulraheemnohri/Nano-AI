@@ -116,12 +116,15 @@ def test_job_timeout_records_error_and_schedules_retry(tmp_path, monkeypatch):
     monkeypatch.setattr(core, "respond", slow_respond)
     job = create_job("Timeout test", "assistant_prompt", {"prompt": "Run"}, 3600, max_attempts=2, retry_delay_seconds=5, timeout_seconds=5)
     result = run_job(job)
-    assert result["status"] == "retry_scheduled"
+    assert result["status"] == "timed_out"
     assert "timed out after 5 seconds" in result["error"]
     current = list_jobs()[0]
-    assert current["attempt_count"] == 1
+    assert current["attempt_count"] == 0
     assert "JobTimeoutError" in current["last_error"]
     assert list_runs(job["id"])[0]["status"] == "error"
+    # The first worker is still sleeping, so a manual retry must not overlap it.
+    blocked = run_job(current)
+    assert blocked["status"] == "blocked_active_worker"
 
 
 def test_job_timeout_validation_and_default(tmp_path, monkeypatch):
