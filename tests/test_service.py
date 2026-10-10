@@ -14,7 +14,8 @@ def test_user_service_units_are_loopback_only_and_restart_on_failure(monkeypatch
     assert "PrivateTmp=" not in units["nano-ai-litert-lm.service"]
     assert "NoNewPrivileges=true" in units["nano-ai.service"]
     assert "serve --host 127.0.0.1 --port 9379" in units["nano-ai-litert-lm.service"]
-    assert 'WorkingDirectory="' in units["nano-ai.service"]
+    assert "WorkingDirectory=" + str(config.ROOT) in units["nano-ai.service"]
+    assert 'WorkingDirectory="' not in units["nano-ai.service"]
 
 
 def test_user_service_builder_rejects_remote_bind(monkeypatch):
