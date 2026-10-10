@@ -30,12 +30,14 @@ from .messaging import telegram_send, webhook_send
 from .mcp import handle_message
 from .desktop import desktop_action
 from .updates import check_update, apply_update, rollback_update
+from .selfx import init_selfx_db, run_self_check, create_goal, list_goals, update_goal, record_lesson, list_lessons, reflect
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     if not is_loopback_host(config.HOST) and not configured_token():
         raise RuntimeError("Refusing remote API startup without NANO_API_TOKEN.")
     init_db()
+    init_selfx_db()
     seed()
     start_scheduler()
     try:
@@ -90,6 +92,34 @@ async def protect_api(request: Request, call_next):
         # already-consumed stream again.
         request._body = bytes(body)
     return await call_next(request)
+
+class SelfGoalIn(BaseModel):
+    title: str = Field(min_length=1, max_length=160)
+    description: str = Field(default="", max_length=6000)
+    priority: int = Field(default=3, ge=1, le=5)
+
+
+class SelfGoalUpdateIn(BaseModel):
+    status: str | None = None
+    title: str | None = Field(default=None, min_length=1, max_length=160)
+    description: str | None = Field(default=None, max_length=6000)
+    priority: int | None = Field(default=None, ge=1, le=5)
+
+
+class SelfLessonIn(BaseModel):
+    topic: str = Field(min_length=1, max_length=160)
+    lesson: str = Field(min_length=1, max_length=6000)
+    source: str = Field(default="experience", max_length=1000)
+    outcome: str = Field(default="observed", max_length=80)
+    confidence: float = Field(default=0.5, ge=0, le=1)
+    evidence: list[dict] = Field(default_factory=list, max_length=20)
+
+
+class SelfReflectionIn(BaseModel):
+    scope: str = Field(min_length=1, max_length=160)
+    summary: str = Field(min_length=1, max_length=6000)
+    findings: list[str] = Field(default_factory=list, max_length=50)
+
 
 class ChatIn(BaseModel): conversation_id:int=1; message:str
 class MemoryConsolidationIn(BaseModel): merged_content:str|None=Field(default=None,max_length=12000)
@@ -631,6 +661,67 @@ def mcp_endpoint(message:dict):
     response = handle_message(message)
     if response is None: return JSONResponse({},status_code=202)
     return response
+
+@app.get("/api/self/status")
+def selfx_status():
+    return run_self_check()
+
+
+@app.post("/api/self/check")
+def selfx_check():
+    """Run a read-only self-check; it never executes recommendations."""
+    return run_self_check()
+
+
+@app.get("/api/self/goals")
+def selfx_goals(status: str | None = None, limit: int = 100, offset: int = 0):
+    try:
+        return list_goals(status, limit, offset)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/self/goals")
+def selfx_goal_create(x: SelfGoalIn):
+    try:
+        return create_goal(x.title, x.description, x.priority)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.patch("/api/self/goals/{goal_id}")
+def selfx_goal_update(goal_id: int, x: SelfGoalUpdateIn):
+    try:
+        return update_goal(goal_id, x.status, x.title, x.description, x.priority)
+    except KeyError as e:
+        raise HTTPException(404, str(e))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/self/lessons")
+def selfx_lessons(topic: str | None = None, limit: int = 100, offset: int = 0):
+    try:
+        return list_lessons(topic, limit, offset)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/self/lessons")
+def selfx_lesson_create(x: SelfLessonIn):
+    try:
+        return record_lesson(x.topic, x.lesson, x.source, x.outcome, x.confidence, x.evidence)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/self/reflections")
+def selfx_reflection_create(x: SelfReflectionIn):
+    try:
+        return reflect(x.scope, x.summary, x.findings)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
 
 @app.get("/api/system")
 def system(): return {"version":"0.5.0","host":config.HOST,"port":config.PORT,"runtime":status(),"voice":voice_status(),"paths":{"data":str(config.DATA_DIR),"models":str(config.MODEL_DIR),"skills":str(config.SKILLS_DIR),"database":str(config.DB_PATH)}}
