@@ -7,7 +7,7 @@ from fastapi.responses import HTMLResponse,FileResponse,JSONResponse,Response
 from starlette.background import BackgroundTask
 from pydantic import BaseModel, Field
 from . import config
-from .db import init_db,rows,run
+from .db import init_db,rows,run,connect
 from .core import respond, generate_proactive_talk, regenerate
 from .memory import search,forget,clear,find_duplicate_candidates,create_consolidation_proposals,list_consolidation_proposals,approve_consolidation,reject_consolidation
 from .learning import events, save_response_feedback, feedback_summary, quality_report
@@ -327,8 +327,9 @@ def knowledge_clear():
     return {"ok":True}
 @app.post("/api/knowledge")
 def knowledge_add(x:KnowledgeIn):
-    if not x.text.strip() or len(x.text)>500000: raise HTTPException(400,"Invalid text")
-    return {"chunks":ingest(x.text,x.source)}
+    if not x.text.strip(): raise HTTPException(400,"Invalid text")
+    try: return {"chunks":ingest(x.text,x.source)}
+    except ValueError as e: raise HTTPException(400,str(e))
 
 @app.get("/api/settings")
 def settings(): return public()
@@ -646,10 +647,17 @@ def conversation_rename(cid:int,x:ConversationIn):
     run("UPDATE conversations SET title=?,updated_at=CURRENT_TIMESTAMP WHERE id=?",(title,cid)); return {"ok":True,"title":title}
 @app.delete("/api/conversations/{cid}")
 def conversation_delete(cid:int):
-    if not rows("SELECT id FROM conversations WHERE id=?",(cid,)): raise HTTPException(404,"Conversation not found")
-    run("DELETE FROM messages WHERE conversation_id=?",(cid,)); run("DELETE FROM conversations WHERE id=?",(cid,))
+    if not rows("SELECT id FROM conversations WHERE id=?", (cid,)): raise HTTPException(404, "Conversation not found")
+    # Remove explicit feedback and its learning-event mirror before deleting the conversation.
+    with connect() as c:
+        feedback_ids = [row["id"] for row in c.execute("SELECT id FROM response_feedback WHERE conversation_id=?", (cid,)).fetchall()]
+        for feedback_id in feedback_ids:
+            c.execute("DELETE FROM learning_events WHERE event_type='response_feedback' AND result LIKE ?", (f"%'feedback_id': {feedback_id}%",))
+        c.execute("DELETE FROM response_feedback WHERE conversation_id=?", (cid,))
+        c.execute("DELETE FROM messages WHERE conversation_id=?", (cid,))
+        c.execute("DELETE FROM conversations WHERE id=?", (cid,))
     if not rows("SELECT id FROM conversations LIMIT 1"): run("INSERT INTO conversations(title) VALUES('Nano AI')")
-    return {"ok":True}
+    return {"ok": True}
 @app.get("/api/conversations/{cid}/messages")
 def messages(cid:int, limit:int=200, offset:int=0):
     if not rows("SELECT id FROM conversations WHERE id=?",(cid,)): raise HTTPException(404,"Conversation not found")
