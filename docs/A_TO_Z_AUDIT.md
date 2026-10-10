@@ -167,3 +167,11 @@ Audit scope: current `main` source tree. This inventory distinguishes implemente
 - The Talk UI loads the latest 200 messages and offers a "Load earlier messages" button that prepends older pages without losing scroll position of newer content.
 - Backward compatible: callers without parameters receive the newest 200 messages in the same ascending order as before.
 - Coverage: `tests/test_conversations_api.py` (window ordering, offset paging, 404) and `tests/test_web_ui.py` (earlier-messages wiring).
+
+
+## Memory pagination (Phase 5 improvement)
+
+- `nano.memory.search` and `GET /api/memories` accept a bounded `limit` (1-500, default 50) and a non-negative `offset`; both the plain listing and the `q=` LIKE search page through the same ordering (confidence DESC, updated_at DESC).
+- The Memory UI renders 50 memories per page with a "Load more memories" button, including during an active search query; forgetting a memory reloads from the first page.
+- Backward compatible: callers without parameters receive the newest 50 active memories, as before.
+- Coverage: `tests/test_memories_api.py` (list and search offset paging, disjoint pages, clamping) and `tests/test_web_ui.py` (memory paging wiring).

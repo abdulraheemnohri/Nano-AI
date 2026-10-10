@@ -87,3 +87,11 @@ def test_chat_loads_paginated_messages_with_earlier_button():
     assert "b.id='earlierMsgs'" in html
     assert "api('/api/conversations/'+id+'/messages?limit='+MSG_PAGE)" in html
     assert "api('/api/conversations/'+cid+'/messages?limit='+MSG_PAGE+'&offset='+msgOffset)" in html
+
+
+def test_memory_page_paginates_memories():
+    html = web.HTML
+    assert "async function moreMemories()" in html
+    assert "b.id='moreMemories'" in html
+    assert "api('/api/memories?q='+encodeURIComponent(q)+'&limit=50')" in html
+    assert "api('/api/memories?q='+encodeURIComponent(q)+'&limit=50&offset='+memOffset)" in html
