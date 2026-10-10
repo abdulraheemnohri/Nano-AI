@@ -34,6 +34,18 @@ Start Nano Web UI in another terminal:
 
 Open http://127.0.0.1:8000.
 
+### Web UI files
+
+The responsive single-page UI is implemented with plain HTML, CSS, and JavaScript (no frontend framework):
+
+- `nano/static/index.html` — app shell and all 11 navigable pages.
+- `nano/static/app.css` — dark-first theme, light-theme overrides, responsive layout, panels, forms, and chat styling.
+- `nano/static/app.js` — page navigation, API calls, chat, pagination, model management, memory, learning, skills, tools, research, automation, settings, and system controls.
+- `nano/web.py` — loads the packaged UI assets.
+- `nano/app.py` — serves the page at `/`, stylesheet at `/assets/nano.css`, and JavaScript at `/assets/nano.js`.
+
+UI sections: Talk, Memory, Learning, Skills, Tools, Knowledge, Web Research, Automation & Agents, Model, Settings, and System. The existing backend APIs remain the source of truth; UI controls use the corresponding API routes rather than mock data.
+
 ## Windows PowerShell
 
     git clone https://github.com/abdulraheemnohri/Nano-AI.git
@@ -112,7 +124,7 @@ Set a strong random token in `NANO_API_TOKEN`. The UI prompts for it when the AP
 
 ### Request limits, settings, and recovery
 
-- `NANO_MAX_REQUEST_BYTES=1048576` limits JSON request bodies when Content-Length is present (default 1 MiB; maximum configurable value 10 MB).
+- `NANO_MAX_REQUEST_BYTES=1048576` limits JSON/API request bodies (default 1 MiB; maximum configurable value 10 MB), including chunked requests without `Content-Length`. Restore and voice uploads use separate streaming limits.
 - `NANO_RATE_LIMIT_PER_MINUTE=120` limits API calls per client IP per process. Multi-worker deployments should also configure reverse-proxy rate/body limits.
 - Settings have a schema endpoint at `GET /api/settings/schema`, including descriptions, defaults, choices and numeric bounds. Theme, language, model parameters, memory limits, knowledge list size, learning, and voice toggles are wired to runtime/UI behavior.
 - Settings offers a SQLite backup restore upload at `POST /api/restore`. Restore checks database integrity and required tables, creates a pre-restore snapshot in `data/recovery/`, and reports its filename. Keep this directory private.

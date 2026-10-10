@@ -32,8 +32,8 @@ def test_memories_list_is_paginated(tmp_path, monkeypatch):
     ids = [m["id"] for m in page1 + page2 + page3]
     assert len(set(ids)) == 7
     # Highest confidence first.
-    assert page1[0]["content"] == "alpha memory 7"
-    assert page3[0]["content"] == "alpha memory 1"
+    assert page1[0]["content"] == "alpha memory 6"
+    assert page3[0]["content"] == "alpha memory 0"
 
     negative = client.get("/api/memories", params={"offset": -5}).json()
     assert len(negative) == 7

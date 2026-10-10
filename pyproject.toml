@@ -30,3 +30,6 @@ exclude = ["data", "models", "skills"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.setuptools.package-data]
+nano = ["static/*.html", "static/*.css", "static/*.js"]
