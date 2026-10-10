@@ -74,19 +74,16 @@ def check_update():
 def _install_dependencies():
     """Best-effort, explicitly requested dependency install after a fast-forward update."""
     import sys
-    requirements = config.ROOT / "requirements.txt"
-    command = [sys.executable, "-m", "pip", "install", "--quiet", "--disable-pip-version-check"]
-    if requirements.is_file():
-        command += ["-r", str(requirements)]
-    else:
-        command += ["-e", str(config.ROOT)]
+    # pyproject.toml is the authoritative package metadata. Installing only
+    # requirements.txt can miss dependencies declared in project metadata.
+    command = [sys.executable, "-m", "pip", "install", "--quiet", "--disable-pip-version-check", "-e", str(config.ROOT)]
     try:
         result = subprocess.run(command, capture_output=True, text=True, timeout=900, check=False)
     except (OSError, subprocess.TimeoutExpired) as exc:
         return {"attempted": True, "ok": False, "error": f"Dependency install failed: {exc}"}
     if result.returncode:
         return {"attempted": True, "ok": False, "error": (result.stderr or result.stdout or "pip install failed.")[-1000:]}
-    return {"attempted": True, "ok": True, "mode": "requirements" if requirements.is_file() else "editable"}
+    return {"attempted": True, "ok": True, "mode": "editable"}
 
 
 def apply_update(approved=False, install_dependencies=False):
