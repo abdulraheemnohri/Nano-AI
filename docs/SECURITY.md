@@ -6,7 +6,7 @@ Nano AI is local-first by default.
 - Set a strong `NANO_API_TOKEN` before any LAN, reverse-proxy, or public exposure. Requests use `Authorization: Bearer <token>` or `X-Nano-Token`.
 - The CLI refuses non-loopback binds when `NANO_API_TOKEN` is missing. Requests from non-loopback peers are rejected without a token. Use TLS and a firewall/reverse proxy for remote access.
 - A configured token protects API and MCP endpoints; the web UI asks for it and retains it only in the current browser tab's session storage.
-- API JSON requests enforce `NANO_MAX_REQUEST_BYTES` (default 1 MiB, capped at 10 MB) when Content-Length is supplied and `NANO_RATE_LIMIT_PER_MINUTE` (default 120 per client IP per process). A reverse proxy should also enforce body/time/rate limits, especially for chunked requests or multi-worker deployments.
+- API JSON requests enforce `NANO_MAX_REQUEST_BYTES` (default 1 MiB, capped at 10 MB), including chunked requests without Content-Length; restore and voice uploads have separate streaming limits. `NANO_RATE_LIMIT_PER_MINUTE` (default 120 per client IP per process) is process-local. A reverse proxy should also enforce body/time/rate limits, especially for multi-worker deployments.
 - Never commit secrets. Configure Telegram credentials and webhook secrets through environment variables.
 - MCP exposes only the enabled built-in allowlisted tools; it does not expose arbitrary Python execution.
 - The terminal runner never invokes a shell. It exposes a fixed set of read-oriented commands, validates relative paths, bounds output, and requires explicit approval for each run.
