@@ -36,13 +36,9 @@ Reviewed branch: `main`
 
 ## Test evidence
 
-The latest successful GitHub Actions run visible during this review was:
+The latest successful main-branch CI run recorded during this recheck is [run 38036864797](https://github.com/abdulraheemnohri/Nano-AI/actions/runs/38036864797), commit `c7b285032c0bd573a24b4a27753e56a22fc6a5ac`. The Linux, Windows, macOS, and package-build jobs passed. The follow-up audit branch adds regression tests for optional setup and model status semantics; those changes require their own PR CI before they are considered verified.
 
-- Commit: `f8f913eb9d82afe51dacf853cf3dc59c6388c0f0`
-- Result: **89 passed, 5 warnings**
-- Run: [GitHub Actions run 37910248669](https://github.com/abdulraheemnohri/Nano-AI/actions/runs/37910248669)
-
-The CI workflow installs the project with test extras and runs `python -m pytest -q` on Python 3.12. A green CI run confirms the automated test suite for that commit; it does not establish target-machine integration, security certification, or production readiness.
+CI installs the project with test extras, runs `python -m pytest -q` on Python 3.12, and builds/validates the wheel and source distribution. A green CI run does not establish target-machine model inference, optional voice/browser integration, security certification, or production readiness.
 
 ## Required release gate
 
