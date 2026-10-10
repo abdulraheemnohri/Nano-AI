@@ -79,3 +79,11 @@ def test_web_ui_keeps_core_navigation_and_system_health_controls():
     html = web.HTML
     for expected in ("data-p='talk'", "data-p='settings'", "id='send'", "id='systemHealthSummary'", "id='refreshSystemHealth'"):
         assert expected in html
+
+
+def test_chat_loads_paginated_messages_with_earlier_button():
+    html = web.HTML
+    assert "async function earlierMsgs()" in html
+    assert "b.id='earlierMsgs'" in html
+    assert "api('/api/conversations/'+id+'/messages?limit='+MSG_PAGE)" in html
+    assert "api('/api/conversations/'+cid+'/messages?limit='+MSG_PAGE+'&offset='+msgOffset)" in html

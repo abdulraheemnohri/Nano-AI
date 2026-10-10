@@ -160,3 +160,10 @@ Audit scope: current `main` source tree. This inventory distinguishes implemente
 - Sidebar theme toggle button persists the choice through the existing `theme` setting.
 - `ensure_disk_space()` in the model manager refuses imports with under ~2 GB free space in the model directory (auto setup returns 400 via the API; import task returns 400).
 - Coverage: `tests/test_pagination.py`, `tests/test_model_disk_space.py`, `tests/test_updates_dependency_install.py`, and UI wiring guards in `tests/test_web_ui.py`.
+
+## Chat message pagination (Phase 5 improvement)
+
+- `GET /api/conversations/{id}/messages` now returns the newest window of messages (default 200, hard cap 500, non-negative `offset`) in chronological order, instead of every message row for the conversation.
+- The Talk UI loads the latest 200 messages and offers a "Load earlier messages" button that prepends older pages without losing scroll position of newer content.
+- Backward compatible: callers without parameters receive the newest 200 messages in the same ascending order as before.
+- Coverage: `tests/test_conversations_api.py` (window ordering, offset paging, 404) and `tests/test_web_ui.py` (earlier-messages wiring).

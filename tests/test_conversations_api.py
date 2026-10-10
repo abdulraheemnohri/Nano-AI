@@ -106,3 +106,24 @@ def test_conversation_list_supports_offset_paging(tmp_path, monkeypatch):
     assert not (ids1 & ids2)
     negative = client.get("/api/conversations", params={"offset": -5}).json()
     assert len(negative) == 5
+
+
+def test_conversation_messages_paginated_newest_window(tmp_path, monkeypatch):
+    client = _setup(tmp_path, monkeypatch)
+    cid = client.post("/api/conversations", json={"title": "Long"}).json()["id"]
+    for i in range(7):
+        db.run(
+            "INSERT INTO messages(conversation_id,role,content) VALUES(?,?,?)",
+            (cid, "user", "m-%d" % i),
+        )
+
+    latest = client.get("/api/conversations/%d/messages" % cid, params={"limit": 3}).json()
+    assert [m["content"] for m in latest] == ["m-4", "m-5", "m-6"]
+
+    earlier = client.get("/api/conversations/%d/messages" % cid, params={"limit": 3, "offset": 3}).json()
+    assert [m["content"] for m in earlier] == ["m-1", "m-2", "m-3"]
+
+    oldest = client.get("/api/conversations/%d/messages" % cid, params={"limit": 3, "offset": 6}).json()
+    assert [m["content"] for m in oldest] == ["m-0"]
+
+    assert client.get("/api/conversations/9999/messages").status_code == 404

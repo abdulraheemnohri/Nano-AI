@@ -633,9 +633,13 @@ def conversation_delete(cid:int):
     if not rows("SELECT id FROM conversations LIMIT 1"): run("INSERT INTO conversations(title) VALUES('Nano AI')")
     return {"ok":True}
 @app.get("/api/conversations/{cid}/messages")
-def messages(cid:int):
+def messages(cid:int, limit:int=200, offset:int=0):
     if not rows("SELECT id FROM conversations WHERE id=?",(cid,)): raise HTTPException(404,"Conversation not found")
-    return rows("SELECT * FROM messages WHERE conversation_id=? ORDER BY id",(cid,))
+    bounded=max(1,min(500,limit))
+    safe_offset=max(0,int(offset))
+    page=rows("SELECT * FROM messages WHERE conversation_id=? ORDER BY id DESC LIMIT ? OFFSET ?",(cid,bounded,safe_offset))
+    page.reverse()
+    return page
 
 @app.post("/api/chat/regenerate")
 def chat_regenerate(x:RegenerateIn):

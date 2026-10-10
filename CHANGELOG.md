@@ -9,6 +9,7 @@ Notable changes to Nano AI are documented here. Releases follow the repository's
 - Learning events and Knowledge lists are now paginated (`limit`/`offset` query parameters; UI "Load more" buttons).
 - Theme toggle button in the sidebar (light/dark, persisted through the theme setting).
 - Disk-space guard: model imports (auto setup, custom import task, direct import) are refused with a clear message when under ~2 GB free space in the model directory.
+- Conversation messages are paginated: `GET /api/conversations/{id}/messages` returns the newest window (default 200, max 500) in chronological order with `limit`/`offset`; the Talk UI shows a "Load earlier messages" button for long conversations.
 - Bounded `GET /api/conversations` list (`limit` query parameter, default 200, capped at 500; `offset` for paging) so the sidebar no longer loads every conversation. The Talk sidebar loads conversations in pages of 200 with a "Load more conversations" button when more exist.
 - Restore now prunes old `recovery/pre-restore-*.sqlite3` snapshots, keeping only the 10 newest, so repeated restores cannot fill the disk.
 - Conversation management: `regenerate()` in core plus `POST /api/chat/regenerate`, `GET /api/conversations/search?q=` (LIKE search with escaped wildcards), and `GET /api/conversations/{cid}/export`. The Talk UI gained conversation search, Regenerate, Rename, Delete, and Export controls.
