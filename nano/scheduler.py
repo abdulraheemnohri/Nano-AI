@@ -3,6 +3,7 @@ import json
 import threading
 import time
 from datetime import datetime, timedelta, timezone
+from . import db as _db
 from .db import connect, run, rows
 
 _lock = threading.RLock()
@@ -182,7 +183,7 @@ def _execute_prompt(job, payload):
     worker.join(timeout)
     if worker.is_alive():
         with _TIMED_OUT_LOCK:
-            _TIMED_OUT_WORKERS[job["id"]] = worker
+            _TIMED_OUT_WORKERS[(str(_db.DB_PATH), int(job["id"]))] = worker
         raise JobTimeoutError(f"Job timed out after {timeout} seconds.")
     if "error" in outcome:
         raise outcome["error"]
@@ -190,13 +191,14 @@ def _execute_prompt(job, payload):
 
 
 def _timed_out_worker_active(job_id):
+    key = (str(_db.DB_PATH), int(job_id))
     with _TIMED_OUT_LOCK:
-        worker = _TIMED_OUT_WORKERS.get(job_id)
+        worker = _TIMED_OUT_WORKERS.get(key)
         if worker is None:
             return False
         if worker.is_alive():
             return True
-        _TIMED_OUT_WORKERS.pop(job_id, None)
+        _TIMED_OUT_WORKERS.pop(key, None)
         return False
 
 def run_job(job):
