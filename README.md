@@ -10,6 +10,7 @@ Nano AI includes a policy-bounded Self-X foundation for recording goals, lessons
 - `GET /api/self/goals`, `POST /api/self/goals`, `PATCH /api/self/goals/{id}` — persistent prioritized goals and status tracking.
 - `GET /api/self/lessons`, `POST /api/self/lessons` — lessons with source, outcome, confidence, and bounded evidence provenance.
 - `POST /api/self/reflections` — record a bounded reflection summary and findings.
+- `GET /api/self/improvements`, `POST /api/self/improvements`, `PATCH /api/self/improvements/{id}` — store improvement proposals with evidence and explicitly review them as approved or rejected. Review does not apply code or change permissions.
 
 Goal states are `planned`, `active`, `blocked`, `completed`, and `cancelled`; priorities range from 1 (highest) to 5. Self-check is read-only and does not execute recommendations. These endpoints do not change permissions, bypass approval, execute generated code, or modify model weights. Internet research remains evidence to validate, not trusted instructions.
 
