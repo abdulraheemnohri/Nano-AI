@@ -8,6 +8,11 @@ def test_user_service_units_are_loopback_only_and_restart_on_failure(monkeypatch
     units = build_user_units("/opt/nano venv/bin/nano-ai", "/opt/litert-lm")
     assert set(units) == {"nano-ai.service", "nano-ai-litert-lm.service"}
     assert "Restart=on-failure" in units["nano-ai.service"]
+    # PrivateTmp is not supported in many systemd user-manager contexts and
+    # causes LoadState=bad-setting; keep user units portable.
+    assert "PrivateTmp=" not in units["nano-ai.service"]
+    assert "PrivateTmp=" not in units["nano-ai-litert-lm.service"]
+    assert "NoNewPrivileges=true" in units["nano-ai.service"]
     assert "serve --host 127.0.0.1 --port 9379" in units["nano-ai-litert-lm.service"]
     assert 'WorkingDirectory="' in units["nano-ai.service"]
 
