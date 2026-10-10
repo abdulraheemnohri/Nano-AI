@@ -6,7 +6,8 @@ Nano AI is a lightweight, privacy-first local talking assistant built around Qwe
 
 Nano AI includes a policy-bounded Self-X foundation for recording goals, lessons, and reflections, plus a read-only self-check. These APIs help the assistant track improvement without claiming to retrain its model or perform unapproved actions.
 
-- `GET /api/self/status` and `POST /api/self/check` — read-only diagnostic snapshot and recommendations.
+- `GET /api/self/status` and `POST /api/self/check` — read-only diagnostics, LiteRT-LM readiness, and recommendations; no automatic restart is attempted.
+- `GET /api/self/evaluation` — summarizes existing feedback and answer-quality signals without changing model weights.
 - `GET /api/self/goals`, `POST /api/self/goals`, `PATCH /api/self/goals/{id}` — persistent prioritized goals and status tracking.
 - `GET /api/self/lessons`, `POST /api/self/lessons` — lessons with source, outcome, confidence, and bounded evidence provenance.
 - `POST /api/self/reflections` — record a bounded reflection summary and findings.
