@@ -112,7 +112,7 @@ Set a strong random token in `NANO_API_TOKEN`. The UI prompts for it when the AP
 
 ### Request limits, settings, and recovery
 
-- `NANO_MAX_REQUEST_BYTES=1048576` limits JSON request bodies when Content-Length is present (default 1 MiB; maximum configurable value 10 MB).
+- `NANO_MAX_REQUEST_BYTES=1048576` limits JSON/API request bodies (default 1 MiB; maximum configurable value 10 MB), including chunked requests without `Content-Length`. Restore and voice uploads use separate streaming limits.
 - `NANO_RATE_LIMIT_PER_MINUTE=120` limits API calls per client IP per process. Multi-worker deployments should also configure reverse-proxy rate/body limits.
 - Settings have a schema endpoint at `GET /api/settings/schema`, including descriptions, defaults, choices and numeric bounds. Theme, language, model parameters, memory limits, knowledge list size, learning, and voice toggles are wired to runtime/UI behavior.
 - Settings offers a SQLite backup restore upload at `POST /api/restore`. Restore checks database integrity and required tables, creates a pre-restore snapshot in `data/recovery/`, and reports its filename. Keep this directory private.
