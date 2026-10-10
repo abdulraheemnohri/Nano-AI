@@ -70,7 +70,7 @@ def test_doctor_distinguishes_unreachable_endpoint_from_unserved_model(tmp_path,
     monkeypatch.setattr(
         doctor, "runtime_status",
         lambda: {"binary": True, "reachable": False, "configured_url": "http://127.0.0.1:9379",
-                 "model": "qwen3-1.7b", "models": [], "endpoint_error": "Connection refused"},
+                 "model": "qwen3-4b-thinking-2507", "models": [], "endpoint_error": "Connection refused"},
     )
     endpoint = endpoint_check()
     assert endpoint["status"] == "warn"
@@ -80,7 +80,7 @@ def test_doctor_distinguishes_unreachable_endpoint_from_unserved_model(tmp_path,
     monkeypatch.setattr(
         doctor, "runtime_status",
         lambda: {"binary": True, "reachable": True, "configured_url": "http://127.0.0.1:9379",
-                 "model": "qwen3-1.7b", "models": ["other-model"]},
+                 "model": "qwen3-4b-thinking-2507", "models": ["other-model"]},
     )
     endpoint = endpoint_check()
     assert endpoint["status"] == "warn"
@@ -89,7 +89,7 @@ def test_doctor_distinguishes_unreachable_endpoint_from_unserved_model(tmp_path,
     monkeypatch.setattr(
         doctor, "runtime_status",
         lambda: {"binary": True, "reachable": True, "configured_url": "http://127.0.0.1:9379",
-                 "model": "qwen3-1.7b", "models": []},
+                 "model": "qwen3-4b-thinking-2507", "models": []},
     )
     endpoint = endpoint_check()
     assert endpoint["status"] == "warn"
@@ -98,7 +98,7 @@ def test_doctor_distinguishes_unreachable_endpoint_from_unserved_model(tmp_path,
     monkeypatch.setattr(
         doctor, "runtime_status",
         lambda: {"binary": True, "reachable": True, "configured_url": "http://127.0.0.1:9379",
-                 "model": "qwen3-1.7b", "models": ["qwen3-1.7b"]},
+                 "model": "qwen3-4b-thinking-2507", "models": ["qwen3-4b-thinking-2507"]},
     )
     endpoint = endpoint_check()
     assert endpoint["status"] == "ok"
@@ -108,7 +108,7 @@ def test_doctor_distinguishes_unreachable_endpoint_from_unserved_model(tmp_path,
 def test_model_readiness_reports_install_hint_without_binary():
     result = runtime.model_readiness({
         "reachable": False, "binary": False,
-        "configured_url": "http://127.0.0.1:9379", "model": "qwen3-1.7b",
+        "configured_url": "http://127.0.0.1:9379", "model": "qwen3-4b-thinking-2507",
     })
     assert result["status"] == "warn"
     assert result["model_loaded"] is False
@@ -120,7 +120,7 @@ def test_model_readiness_matches_model_ids_case_insensitively():
     result = runtime.model_readiness({
         "reachable": True, "binary": True,
         "configured_url": "http://127.0.0.1:9379",
-        "model": "Qwen3-1.7B", "models": ["qwen3-1.7b"],
+        "model": "Qwen3-1.7B", "models": ["qwen3-4b-thinking-2507"],
     })
     assert result["status"] == "ok"
     assert result["model_loaded"] is True
