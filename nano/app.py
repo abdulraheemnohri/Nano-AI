@@ -30,12 +30,15 @@ from .messaging import telegram_send, webhook_send
 from .mcp import handle_message
 from .desktop import desktop_action
 from .updates import check_update, apply_update, rollback_update
+from .selfx import init_selfx_db, run_self_check, create_goal, list_goals, update_goal, record_lesson, list_lessons, reflect, propose_improvement, list_improvements, review_improvement
+from .selfx_engine import init_selfx_engine_db, create_plan, get_plan, list_plans, update_plan_status, update_task, record_research, list_research, run_review_cycle, replan_failed_tasks, compare_research
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     if not is_loopback_host(config.HOST) and not configured_token():
         raise RuntimeError("Refusing remote API startup without NANO_API_TOKEN.")
     init_db()
+    init_selfx_db()
     seed()
     start_scheduler()
     try:
@@ -90,6 +93,91 @@ async def protect_api(request: Request, call_next):
         # already-consumed stream again.
         request._body = bytes(body)
     return await call_next(request)
+
+class SelfGoalIn(BaseModel):
+    title: str = Field(min_length=1, max_length=160)
+    description: str = Field(default="", max_length=6000)
+    priority: int = Field(default=3, ge=1, le=5)
+
+
+class SelfGoalUpdateIn(BaseModel):
+    status: str | None = None
+    title: str | None = Field(default=None, min_length=1, max_length=160)
+    description: str | None = Field(default=None, max_length=6000)
+    priority: int | None = Field(default=None, ge=1, le=5)
+
+
+class SelfLessonIn(BaseModel):
+    topic: str = Field(min_length=1, max_length=160)
+    lesson: str = Field(min_length=1, max_length=6000)
+    source: str = Field(default="experience", max_length=1000)
+    outcome: str = Field(default="observed", max_length=80)
+    confidence: float = Field(default=0.5, ge=0, le=1)
+    evidence: list[dict] = Field(default_factory=list, max_length=20)
+
+
+class SelfReflectionIn(BaseModel):
+    scope: str = Field(min_length=1, max_length=160)
+    summary: str = Field(min_length=1, max_length=6000)
+    findings: list[str] = Field(default_factory=list, max_length=50)
+
+
+class SelfImprovementIn(BaseModel):
+    title: str = Field(min_length=1, max_length=160)
+    description: str = Field(min_length=1, max_length=6000)
+    evidence: list[dict] = Field(default_factory=list, max_length=20)
+
+
+class SelfImprovementReviewIn(BaseModel):
+    status: str
+
+
+
+class SelfPlanIn(BaseModel):
+    goal_id: int = Field(ge=1)
+    title: str = Field(min_length=1, max_length=160)
+    rationale: str = Field(default="", max_length=4000)
+    steps: list = Field(min_length=1, max_length=30)
+
+
+class SelfPlanStatusIn(BaseModel):
+    status: str
+
+
+class SelfTaskUpdateIn(BaseModel):
+    status: str
+    result: str = Field(default="", max_length=4000)
+
+
+class SelfResearchFetchIn(BaseModel):
+    question: str = Field(min_length=1, max_length=1000)
+    url: str = Field(min_length=8, max_length=2048)
+    label: str | None = Field(default=None, max_length=100)
+
+
+class SelfResearchIn(BaseModel):
+    question: str = Field(min_length=1, max_length=1000)
+    source_url: str = Field(min_length=8, max_length=2000)
+    source_title: str = Field(default="", max_length=300)
+    summary: str = Field(min_length=1, max_length=6000)
+    credibility: str = "unassessed"
+    confidence: float = Field(default=0.5, ge=0, le=1)
+    checked_at: str | None = None
+    evidence: list[str] = Field(default_factory=list, max_length=20)
+
+
+
+class SelfTaskLessonIn(BaseModel):
+    topic: str = Field(min_length=1, max_length=160)
+    lesson: str = Field(min_length=1, max_length=6000)
+    confidence: float = Field(default=0.6, ge=0, le=1)
+
+
+class SelfSkillProposalIn(BaseModel):
+    name: str = Field(min_length=2, max_length=48)
+    description: str = Field(min_length=1, max_length=500)
+    prompt: str = Field(min_length=1, max_length=4000)
+
 
 class ChatIn(BaseModel): conversation_id:int=1; message:str
 class MemoryConsolidationIn(BaseModel): merged_content:str|None=Field(default=None,max_length=12000)
@@ -631,6 +719,231 @@ def mcp_endpoint(message:dict):
     response = handle_message(message)
     if response is None: return Response(status_code=202)
     return response
+
+@app.get("/api/self/status")
+def selfx_status():
+    report = run_self_check()
+    runtime_state = status()
+    readiness = model_readiness(runtime_state)
+    report["runtime"] = {
+        "reachable": bool(runtime_state.get("reachable")),
+        "readiness": readiness,
+    }
+    if readiness.get("status") != "ok":
+        report["recommendations"].append({
+            "kind": "runtime",
+            "priority": "high",
+            "action": "Inspect LiteRT-LM service status, model configuration, and runtime logs; no automatic restart was attempted.",
+        })
+    return report
+
+
+@app.post("/api/self/check")
+def selfx_check():
+    """Run a read-only self-check; it never executes recommendations."""
+    return selfx_status()
+
+
+@app.get("/api/self/evaluation")
+def selfx_evaluation():
+    """Summarize existing feedback and answer-quality signals without model updates."""
+    return {
+        "feedback": feedback_summary(),
+        "quality": quality_report(),
+        "model_weight_updates": False,
+        "next_step": "Use these signals to propose a reviewable improvement; do not treat them as proof that a change has been applied.",
+    }
+
+
+@app.get("/api/self/goals")
+def selfx_goals(status: str | None = None, limit: int = 100, offset: int = 0):
+    try:
+        return list_goals(status, limit, offset)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/self/goals")
+def selfx_goal_create(x: SelfGoalIn):
+    try:
+        return create_goal(x.title, x.description, x.priority)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.patch("/api/self/goals/{goal_id}")
+def selfx_goal_update(goal_id: int, x: SelfGoalUpdateIn):
+    try:
+        return update_goal(goal_id, x.status, x.title, x.description, x.priority)
+    except KeyError as e:
+        raise HTTPException(404, str(e))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/self/lessons")
+def selfx_lessons(topic: str | None = None, limit: int = 100, offset: int = 0):
+    try:
+        return list_lessons(topic, limit, offset)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/self/lessons")
+def selfx_lesson_create(x: SelfLessonIn):
+    try:
+        return record_lesson(x.topic, x.lesson, x.source, x.outcome, x.confidence, x.evidence)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/self/reflections")
+def selfx_reflection_create(x: SelfReflectionIn):
+    try:
+        return reflect(x.scope, x.summary, x.findings)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/self/improvements")
+def selfx_improvements(status: str | None = None, limit: int = 100, offset: int = 0):
+    try:
+        return list_improvements(status, limit, offset)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/self/improvements")
+def selfx_improvement_create(x: SelfImprovementIn):
+    try:
+        return propose_improvement(x.title, x.description, x.evidence)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.patch("/api/self/improvements/{proposal_id}")
+def selfx_improvement_review(proposal_id: int, x: SelfImprovementReviewIn):
+    try:
+        return review_improvement(proposal_id, x.status)
+    except KeyError as e:
+        raise HTTPException(404, str(e))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+
+@app.get("/api/self/plans")
+def selfx_plans(goal_id: int | None = None, status: str | None = None, limit: int = 100, offset: int = 0):
+    try:
+        return list_plans(goal_id, status, limit, offset)
+    except (ValueError, TypeError) as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/self/plans")
+def selfx_plan_create(x: SelfPlanIn):
+    try:
+        return create_plan(x.goal_id, x.title, x.rationale, x.steps)
+    except KeyError as e:
+        raise HTTPException(404, str(e))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/self/plans/{plan_id}")
+def selfx_plan_get(plan_id: int):
+    plan = get_plan(plan_id)
+    if not plan:
+        raise HTTPException(404, "Plan not found.")
+    return plan
+
+
+@app.patch("/api/self/plans/{plan_id}")
+def selfx_plan_update(plan_id: int, x: SelfPlanStatusIn):
+    try:
+        return update_plan_status(plan_id, x.status)
+    except KeyError as e:
+        raise HTTPException(404, str(e))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.patch("/api/self/tasks/{task_id}")
+def selfx_task_update(task_id: int, x: SelfTaskUpdateIn):
+    try:
+        return update_task(task_id, x.status, x.result)
+    except KeyError as e:
+        raise HTTPException(404, str(e))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/self/research")
+def selfx_research_list(question: str | None = None, limit: int = 100, offset: int = 0):
+    try:
+        return list_research(question, limit, offset)
+    except (ValueError, TypeError) as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/self/research")
+def selfx_research_create(x: SelfResearchIn):
+    try:
+        return record_research(x.question, x.source_url, x.summary, x.source_title, x.credibility, x.confidence, x.checked_at, x.evidence)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+
+@app.post("/api/self/research/fetch")
+def selfx_research_fetch(x: SelfResearchFetchIn):
+    """Fetch a public HTTPS page, index it locally, and record source provenance."""
+    try:
+        result = research_and_learn(x.url, x.label)
+        record = record_research(
+            x.question,
+            result["url"],
+            result.get("preview", "Page indexed in local knowledge; summary preview unavailable."),
+            result.get("title", ""),
+            credibility="unassessed",
+            confidence=0.25,
+            evidence=["Fetched and indexed locally; source has not been independently cross-checked.",
+                      "Page content is untrusted reference material, never executable instructions."],
+        )
+        return {"research": record, "saved_to_local_knowledge": result.get("saved_to_local_knowledge", False),
+                "notice": "Source stored as unassessed evidence. Verify against independent sources before relying on it."}
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except RuntimeError as e:
+        raise HTTPException(502, str(e))
+
+
+
+@app.post("/api/self/plans/{plan_id}/replan")
+def selfx_replan(plan_id: int):
+    try:
+        return replan_failed_tasks(plan_id)
+    except KeyError as e:
+        raise HTTPException(404, str(e))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/self/research/compare")
+def selfx_research_compare(question: str, limit: int = 100):
+    try:
+        return compare_research(question, limit)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/self/review-cycle")
+def selfx_review_cycle():
+    try:
+        return run_review_cycle()
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
 
 @app.get("/api/system")
 def system(): return {"version":"0.5.0","host":config.HOST,"port":config.PORT,"runtime":status(),"voice":voice_status(),"paths":{"data":str(config.DATA_DIR),"models":str(config.MODEL_DIR),"skills":str(config.SKILLS_DIR),"database":str(config.DB_PATH)}}
