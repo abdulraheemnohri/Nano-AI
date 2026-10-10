@@ -104,7 +104,7 @@ def test_manual_retry_refuses_to_duplicate_an_active_run(tmp_path, monkeypatch):
         retry_job(job["id"])
 
 
-def test_job_timeout_records_error_and_schedules_retry(tmp_path, monkeypatch):
+def test_job_timeout_blocks_overlapping_retry(tmp_path, monkeypatch):
     setup_scheduler_db(tmp_path, monkeypatch)
     import threading
     from nano import core
