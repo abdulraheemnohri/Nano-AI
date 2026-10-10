@@ -38,7 +38,7 @@ def display_host(host):
 def main():
     p=argparse.ArgumentParser(prog="nano-ai",description="Nano AI local Qwen3 assistant")
     s=p.add_subparsers(dest="cmd")
-    for n in ("init","status","model","models","doctor"): s.add_parser(n)
+    for n in ("init","status","model","models","doctor","install-user-service","uninstall-user-service"): s.add_parser(n)
     d=s.add_parser("download-model",aliases=["import-model"]); d.add_argument("--repo",default=MODEL_REPO); d.add_argument("--file",default=MODEL_FILE); d.add_argument("--id",default=None)
     w=s.add_parser("web"); w.add_argument("--host",default=config.HOST); w.add_argument("--port",type=int,default=config.PORT)
     l=s.add_parser("litert-lm"); l.add_argument("--host",default="127.0.0.1"); l.add_argument("--port",type=int,default=9379); l.add_argument("--verbose",action="store_true")
@@ -66,6 +66,14 @@ def main():
             raise SystemExit(f"Port {a.port} on {a.host} is already in use by another service. Inspect it with: ss -ltnp 'sport = :{a.port}'")
         import uvicorn
         uvicorn.run("nano.app:app",host=a.host,port=a.port)
+    elif a.cmd=="install-user-service":
+        from .service import install_user_services
+        try: print(json.dumps(install_user_services(), indent=2))
+        except (RuntimeError, OSError, subprocess.SubprocessError) as e: raise SystemExit(str(e))
+    elif a.cmd=="uninstall-user-service":
+        from .service import uninstall_user_services
+        try: print(json.dumps(uninstall_user_services(), indent=2))
+        except (RuntimeError, OSError, subprocess.SubprocessError) as e: raise SystemExit(str(e))
     elif a.cmd=="litert-lm":
         b=litert_binary()
         if not b: raise SystemExit("litert-lm was not found. Install it with: python -m pip install -U litert-lm")
