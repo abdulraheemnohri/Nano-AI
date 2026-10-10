@@ -1,0 +1,3 @@
+# Core Nano AI package plus optional desktop-control dependencies.
+# Desktop actions remain disabled by default and approval-gated.
+-e .[desktop]
