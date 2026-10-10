@@ -106,12 +106,13 @@ def test_manual_retry_refuses_to_duplicate_an_active_run(tmp_path, monkeypatch):
 
 def test_job_timeout_records_error_and_schedules_retry(tmp_path, monkeypatch):
     setup_scheduler_db(tmp_path, monkeypatch)
-    import time as _time
+    import threading
     from nano import core
 
+    release = threading.Event()
     def slow_respond(*args):
-        _time.sleep(7)
-        return "too late"
+        release.wait(timeout=10)
+        return "late result"
 
     monkeypatch.setattr(core, "respond", slow_respond)
     job = create_job("Timeout test", "assistant_prompt", {"prompt": "Run"}, 3600, max_attempts=2, retry_delay_seconds=5, timeout_seconds=5)
@@ -125,6 +126,7 @@ def test_job_timeout_records_error_and_schedules_retry(tmp_path, monkeypatch):
     # The first worker is still sleeping, so a manual retry must not overlap it.
     blocked = run_job(current)
     assert blocked["status"] == "blocked_active_worker"
+    release.set()
 
 
 def test_job_timeout_validation_and_default(tmp_path, monkeypatch):
