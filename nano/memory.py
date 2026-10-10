@@ -13,14 +13,22 @@ def _limit(value, default=8):
         return default
 
 
-def search(query, limit=8):
+def _offset(value, default=0):
+    try:
+        return max(0, int(value))
+    except (TypeError, ValueError):
+        return default
+
+
+def search(query, limit=8, offset=0):
     query = str(query or "").strip()
     limit = _limit(limit)
+    offset = _offset(offset)
     if not query:
-        return rows("SELECT * FROM memories WHERE status='active' ORDER BY confidence DESC,updated_at DESC LIMIT ?", (limit,))
+        return rows("SELECT * FROM memories WHERE status='active' ORDER BY confidence DESC,updated_at DESC LIMIT ? OFFSET ?", (limit, offset))
     escaped = query.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
     pattern = f"%{escaped}%"
-    return rows("SELECT * FROM memories WHERE status='active' AND content LIKE ? ESCAPE '\\' ORDER BY confidence DESC,updated_at DESC LIMIT ?", (pattern, limit))
+    return rows("SELECT * FROM memories WHERE status='active' AND content LIKE ? ESCAPE '\\' ORDER BY confidence DESC,updated_at DESC LIMIT ? OFFSET ?", (pattern, limit, offset))
 
 
 def forget(mid):

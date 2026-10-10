@@ -232,7 +232,7 @@ def tools_enabled(name:str, enabled:bool=True):
     except ValueError as e: raise HTTPException(404, str(e))
 
 @app.get("/api/memories")
-def memories(q:str=""): return search(q,50)
+def memories(q:str="",limit:int=50,offset:int=0): return search(q,limit,offset)
 @app.delete("/api/memories/{mid}")
 def delete_memory(mid:int): forget(mid); return {"ok":True}
 @app.delete("/api/memories")
