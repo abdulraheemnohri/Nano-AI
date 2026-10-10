@@ -30,7 +30,7 @@ from .messaging import telegram_send, webhook_send
 from .mcp import handle_message
 from .desktop import desktop_action
 from .updates import check_update, apply_update, rollback_update
-from .selfx import init_selfx_db, run_self_check, create_goal, list_goals, update_goal, record_lesson, list_lessons, reflect, propose_improvement, list_improvements, review_improvement
+from .selfx import init_selfx_db, run_self_check, create_goal, list_goals, update_goal, record_lesson, list_lessons, reflect, propose_improvement, list_improvements, review_improvement\nfrom .selfx_engine import init_selfx_engine_db, create_plan, get_plan, list_plans, update_plan_status, update_task, record_research, list_research, run_review_cycle
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -129,6 +129,34 @@ class SelfImprovementIn(BaseModel):
 
 class SelfImprovementReviewIn(BaseModel):
     status: str
+
+
+
+class SelfPlanIn(BaseModel):
+    goal_id: int = Field(ge=1)
+    title: str = Field(min_length=1, max_length=160)
+    rationale: str = Field(default="", max_length=4000)
+    steps: list = Field(min_length=1, max_length=30)
+
+
+class SelfPlanStatusIn(BaseModel):
+    status: str
+
+
+class SelfTaskUpdateIn(BaseModel):
+    status: str
+    result: str = Field(default="", max_length=4000)
+
+
+class SelfResearchIn(BaseModel):
+    question: str = Field(min_length=1, max_length=1000)
+    source_url: str = Field(min_length=8, max_length=2000)
+    source_title: str = Field(default="", max_length=300)
+    summary: str = Field(min_length=1, max_length=6000)
+    credibility: str = "unassessed"
+    confidence: float = Field(default=0.5, ge=0, le=1)
+    checked_at: str | None = None
+    evidence: list[str] = Field(default_factory=list, max_length=20)
 
 
 class ChatIn(BaseModel): conversation_id:int=1; message:str
@@ -779,6 +807,77 @@ def selfx_improvement_review(proposal_id: int, x: SelfImprovementReviewIn):
         return review_improvement(proposal_id, x.status)
     except KeyError as e:
         raise HTTPException(404, str(e))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+
+@app.get("/api/self/plans")
+def selfx_plans(goal_id: int | None = None, status: str | None = None, limit: int = 100, offset: int = 0):
+    try:
+        return list_plans(goal_id, status, limit, offset)
+    except (ValueError, TypeError) as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/self/plans")
+def selfx_plan_create(x: SelfPlanIn):
+    try:
+        return create_plan(x.goal_id, x.title, x.rationale, x.steps)
+    except KeyError as e:
+        raise HTTPException(404, str(e))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/self/plans/{plan_id}")
+def selfx_plan_get(plan_id: int):
+    plan = get_plan(plan_id)
+    if not plan:
+        raise HTTPException(404, "Plan not found.")
+    return plan
+
+
+@app.patch("/api/self/plans/{plan_id}")
+def selfx_plan_update(plan_id: int, x: SelfPlanStatusIn):
+    try:
+        return update_plan_status(plan_id, x.status)
+    except KeyError as e:
+        raise HTTPException(404, str(e))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.patch("/api/self/tasks/{task_id}")
+def selfx_task_update(task_id: int, x: SelfTaskUpdateIn):
+    try:
+        return update_task(task_id, x.status, x.result)
+    except KeyError as e:
+        raise HTTPException(404, str(e))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/self/research")
+def selfx_research_list(question: str | None = None, limit: int = 100, offset: int = 0):
+    try:
+        return list_research(question, limit, offset)
+    except (ValueError, TypeError) as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/self/research")
+def selfx_research_create(x: SelfResearchIn):
+    try:
+        return record_research(x.question, x.source_url, x.summary, x.source_title, x.credibility, x.confidence, x.checked_at, x.evidence)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/self/review-cycle")
+def selfx_review_cycle():
+    try:
+        return run_review_cycle()
     except ValueError as e:
         raise HTTPException(400, str(e))
 
