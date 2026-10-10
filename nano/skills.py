@@ -1,5 +1,5 @@
 import re
-from .db import rows, run
+from .db import connect, rows, run
 
 BUILTINS = [
     ("conversation", "Conversation", "Natural conversation, clarification and tone.", "Be a helpful conversational partner. Ask a brief clarifying question when needed."),
@@ -61,14 +61,40 @@ def proposals():
 
 
 def accept(pid):
-    proposal = rows("SELECT * FROM skill_proposals WHERE id=? AND status='pending'", (pid,))
-    if not proposal:
-        return False
-    item = proposal[0]
-    run("INSERT INTO skills(name,description,version,prompt) VALUES(?,?,1,?) ON CONFLICT(name) DO UPDATE SET version=version+1,description=excluded.description,prompt=excluded.prompt,updated_at=CURRENT_TIMESTAMP", (item["name"], item["description"], item["prompt"]))
-    run("UPDATE skill_proposals SET status='accepted' WHERE id=?", (pid,))
-    return True
+    """Atomically activate a pending proposal exactly once.
+
+    BEGIN IMMEDIATE serializes concurrent reviewers before reading the pending
+    row, preventing duplicate version increments or accepting a rejected item.
+    """
+    with connect() as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        proposal = conn.execute(
+            "SELECT * FROM skill_proposals WHERE id=? AND status='pending'", (pid,)
+        ).fetchone()
+        if not proposal:
+            return False
+        item = dict(proposal)
+        conn.execute(
+            "INSERT INTO skills(name,description,version,prompt) VALUES(?,?,1,?) "
+            "ON CONFLICT(name) DO UPDATE SET version=version+1,description=excluded.description,"
+            "prompt=excluded.prompt,updated_at=CURRENT_TIMESTAMP",
+            (item["name"], item["description"], item["prompt"]),
+        )
+        changed = conn.execute(
+            "UPDATE skill_proposals SET status='accepted' WHERE id=? AND status='pending'",
+            (pid,),
+        ).rowcount
+        if changed != 1:
+            raise RuntimeError("Skill proposal review state changed unexpectedly; transaction rolled back.")
+        return True
 
 
 def reject(pid):
-    run("UPDATE skill_proposals SET status='rejected' WHERE id=? AND status='pending'", (pid,))
+    """Reject only a pending proposal and report whether state changed."""
+    with connect() as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        changed = conn.execute(
+            "UPDATE skill_proposals SET status='rejected' WHERE id=? AND status='pending'",
+            (pid,),
+        ).rowcount
+        return changed == 1
