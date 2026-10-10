@@ -39,6 +39,17 @@ def init_selfx_db():
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
         CREATE INDEX IF NOT EXISTS idx_selfx_lessons_topic ON selfx_lessons(topic, created_at);
+        CREATE TABLE IF NOT EXISTS selfx_improvement_proposals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            description TEXT NOT NULL,
+            evidence_json TEXT NOT NULL DEFAULT '[]',
+            status TEXT NOT NULL DEFAULT 'pending',
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            reviewed_at TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_selfx_improvements_status
+            ON selfx_improvement_proposals(status, created_at);
         CREATE TABLE IF NOT EXISTS selfx_reflections (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             scope TEXT NOT NULL,
@@ -185,6 +196,70 @@ def reflect(scope, summary, findings=None):
     return rows("SELECT id,scope,summary,findings_json,created_at FROM selfx_reflections WHERE id=?", (reflection_id,))[0]
 
 
+
+def propose_improvement(title, description, evidence=None):
+    """Record a reviewable improvement idea; never applies it automatically."""
+    title = _bounded_text(title, "title", MAX_TITLE_CHARS)
+    description = _bounded_text(description, "description", MAX_TEXT_CHARS)
+    evidence = [] if evidence is None else evidence
+    if not isinstance(evidence, list) or len(evidence) > 20:
+        raise ValueError("evidence must be a list of at most 20 items.")
+    normalized = []
+    for item in evidence:
+        if not isinstance(item, dict):
+            raise ValueError("Each evidence item must be an object.")
+        normalized.append({
+            "source": _bounded_text(str(item.get("source", "")), "evidence source", 1000),
+            "note": _bounded_text(str(item.get("note", "")), "evidence note", 1000, required=False),
+        })
+    proposal_id = run(
+        "INSERT INTO selfx_improvement_proposals(title,description,evidence_json) VALUES(?,?,?)",
+        (title, description, json.dumps(normalized, ensure_ascii=False)),
+    )
+    return get_improvement(proposal_id)
+
+
+def get_improvement(proposal_id):
+    found = rows("SELECT * FROM selfx_improvement_proposals WHERE id=?", (proposal_id,))
+    if not found:
+        return None
+    item = found[0]
+    item["evidence"] = json.loads(item.pop("evidence_json"))
+    return item
+
+
+def list_improvements(status=None, limit=100, offset=0):
+    try:
+        limit = max(1, min(int(limit), 200))
+        offset = max(0, int(offset))
+    except (TypeError, ValueError):
+        raise ValueError("limit and offset must be integers.")
+    if status is not None:
+        if status not in {"pending", "approved", "rejected"}:
+            raise ValueError("Unsupported improvement status.")
+        found = rows(
+            "SELECT * FROM selfx_improvement_proposals WHERE status=? ORDER BY id DESC LIMIT ? OFFSET ?",
+            (status, limit, offset),
+        )
+    else:
+        found = rows("SELECT * FROM selfx_improvement_proposals ORDER BY id DESC LIMIT ? OFFSET ?", (limit, offset))
+    for item in found:
+        item["evidence"] = json.loads(item.pop("evidence_json"))
+    return found
+
+
+def review_improvement(proposal_id, status):
+    if status not in {"approved", "rejected"}:
+        raise ValueError("Review status must be approved or rejected.")
+    if not rows("SELECT id FROM selfx_improvement_proposals WHERE id=?", (proposal_id,)):
+        raise KeyError("Improvement proposal not found.")
+    run(
+        "UPDATE selfx_improvement_proposals SET status=?, reviewed_at=CURRENT_TIMESTAMP WHERE id=? AND status='pending'",
+        (status, proposal_id),
+    )
+    return get_improvement(proposal_id)
+
+
 def run_self_check():
     """Collect a bounded, read-only snapshot and actionable recommendations."""
     counts = {}
@@ -194,7 +269,7 @@ def run_self_check():
             counts[table] = int(result[0]["count"]) if result else 0
         except Exception:
             counts[table] = None
-    for table in ("selfx_goals", "selfx_lessons", "selfx_reflections"):
+    for table in ("selfx_goals", "selfx_lessons", "selfx_reflections", "selfx_improvement_proposals"):
         try:
             result = rows(f"SELECT COUNT(*) AS count FROM {table}")
             counts[table] = int(result[0]["count"]) if result else 0
