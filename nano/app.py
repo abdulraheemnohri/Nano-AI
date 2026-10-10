@@ -30,7 +30,8 @@ from .messaging import telegram_send, webhook_send
 from .mcp import handle_message
 from .desktop import desktop_action
 from .updates import check_update, apply_update, rollback_update
-from .selfx import init_selfx_db, run_self_check, create_goal, list_goals, update_goal, record_lesson, list_lessons, reflect, propose_improvement, list_improvements, review_improvement\nfrom .selfx_engine import init_selfx_engine_db, create_plan, get_plan, list_plans, update_plan_status, update_task, record_research, list_research, run_review_cycle
+from .selfx import init_selfx_db, run_self_check, create_goal, list_goals, update_goal, record_lesson, list_lessons, reflect, propose_improvement, list_improvements, review_improvement
+from .selfx_engine import init_selfx_engine_db, create_plan, get_plan, list_plans, update_plan_status, update_task, record_research, list_research, run_review_cycle, replan_failed_tasks, compare_research, learn_from_task, propose_skill_from_lesson
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -163,6 +164,19 @@ class SelfResearchIn(BaseModel):
     confidence: float = Field(default=0.5, ge=0, le=1)
     checked_at: str | None = None
     evidence: list[str] = Field(default_factory=list, max_length=20)
+
+
+
+class SelfTaskLessonIn(BaseModel):
+    topic: str = Field(min_length=1, max_length=160)
+    lesson: str = Field(min_length=1, max_length=6000)
+    confidence: float = Field(default=0.6, ge=0, le=1)
+
+
+class SelfSkillProposalIn(BaseModel):
+    name: str = Field(min_length=2, max_length=48)
+    description: str = Field(min_length=1, max_length=500)
+    prompt: str = Field(min_length=1, max_length=4000)
 
 
 class ChatIn(BaseModel): conversation_id:int=1; message:str
@@ -703,7 +717,7 @@ def webhook_send_api(x:WebhookSendIn):
 @app.post("/mcp")
 def mcp_endpoint(message:dict):
     response = handle_message(message)
-    if response is None: return JSONResponse({},status_code=202)
+    if response is None: return Response(status_code=202)
     return response
 
 @app.get("/api/self/status")
@@ -902,6 +916,46 @@ def selfx_research_fetch(x: SelfResearchFetchIn):
         raise HTTPException(400, str(e))
     except RuntimeError as e:
         raise HTTPException(502, str(e))
+
+
+
+@app.post("/api/self/plans/{plan_id}/replan")
+def selfx_replan(plan_id: int):
+    try:
+        return replan_failed_tasks(plan_id)
+    except KeyError as e:
+        raise HTTPException(404, str(e))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/self/research/compare")
+def selfx_research_compare(question: str, limit: int = 100):
+    try:
+        return compare_research(question, limit)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+
+@app.post("/api/self/tasks/{task_id}/learn")
+def selfx_learn_from_task(task_id: int, x: SelfTaskLessonIn):
+    try:
+        return learn_from_task(task_id, x.topic, x.lesson, x.confidence)
+    except KeyError as e:
+        raise HTTPException(404, str(e))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/self/lessons/{lesson_id}/skill-proposal")
+def selfx_skill_proposal_from_lesson(lesson_id: int, x: SelfSkillProposalIn):
+    try:
+        return propose_skill_from_lesson(lesson_id, x.name, x.description, x.prompt)
+    except KeyError as e:
+        raise HTTPException(404, str(e))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
 
 
 @app.post("/api/self/review-cycle")
