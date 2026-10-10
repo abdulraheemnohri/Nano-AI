@@ -45,3 +45,12 @@ def test_terminal_api_rejects_unapproved_actions(monkeypatch):
 def test_research_rejects_non_public_or_nonstandard_urls(url):
     with pytest.raises(ValueError):
         _validate_public_url(url)
+
+def test_forwarded_remote_requests_require_token_even_on_loopback_bind(monkeypatch):
+    from nano import config
+    monkeypatch.setattr(config, "HOST", "127.0.0.1")
+    monkeypatch.setenv("NANO_API_TOKEN", "")
+    with TestClient(app) as client:
+        response = client.get("/api/tools", headers={"X-Forwarded-For": "203.0.113.10"})
+    assert response.status_code == 503
+    assert "NANO_API_TOKEN" in response.json()["detail"]
