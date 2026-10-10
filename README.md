@@ -29,7 +29,7 @@ Nano AI includes a policy-bounded Self-X foundation for recording goals, lessons
 - `GET /api/self/lessons`, `POST /api/self/lessons` — lessons with source, outcome, confidence, and bounded evidence provenance.
 - `POST /api/self/reflections` — record a bounded reflection summary and findings.
 - `GET/POST /api/self/plans`, `GET /api/self/plans/{id}`, `PATCH /api/self/plans/{id}` — persistent goal plans and ordered task checklists. Plan creation is proposal-only; it does not run tools or generated code.
-- `PATCH /api/self/tasks/{id}` — explicitly record task status and outcome; completed/cancelled tasks are terminal, and completing all plan steps completes its goal.
+- `POST /api/self/plans/{id}/advance` — activate only the next sequential task in an active plan. It never runs tools or task instructions; callers must explicitly record outcomes. Failed, blocked, or cancelled tasks stop advancement.\n- `PATCH /api/self/tasks/{id}` — explicitly record task status and outcome; completed/cancelled tasks are terminal, and completing all plan steps completes its goal.
 - `GET/POST /api/self/research` — persist source URL/title, summary, assessment label, confidence, check time, and evidence notes. New evidence defaults to unassessed and is not trusted instructions.
 - `POST /api/self/research/fetch` — fetch a public HTTPS page using the existing SSRF-hardened research client, index it in local knowledge, and save its source provenance as unassessed evidence. Cross-check before relying on it.
 - `POST /api/self/review-cycle` — summarize local task outcomes and explicit answer feedback, record a reflection, and create a pending improvement proposal when signals warrant review. It does not execute proposals.
