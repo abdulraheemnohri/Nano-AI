@@ -10,6 +10,8 @@ _thread = None
 _stop = threading.Event()
 _LEASE_SECONDS = 900
 _MAX_BACKOFF_SECONDS = 3600
+_TIMED_OUT_LOCK = threading.Lock()
+_TIMED_OUT_WORKERS = {}
 
 
 def _now():
@@ -160,10 +162,9 @@ class JobTimeoutError(RuntimeError):
 def _execute_prompt(job, payload):
     """Run one assistant prompt with a per-job hard timeout.
 
-    The model request runs in a daemon worker thread. If it exceeds the
-    job timeout the attempt is recorded as an error and the normal bounded
-    retry policy applies. The abandoned worker thread is not forcibly
-    killed; it is left to finish or die with the process.
+    The model request runs in a daemon worker thread. Python cannot safely
+    kill that thread; after timeout we track it and suppress retries until it
+    exits, avoiding overlapping model requests for the same job.
     """
     timeout = int(job.get("timeout_seconds") or 300)
     outcome = {}
@@ -180,13 +181,28 @@ def _execute_prompt(job, payload):
     worker.start()
     worker.join(timeout)
     if worker.is_alive():
+        with _TIMED_OUT_LOCK:
+            _TIMED_OUT_WORKERS[job["id"]] = worker
         raise JobTimeoutError(f"Job timed out after {timeout} seconds.")
     if "error" in outcome:
         raise outcome["error"]
     return outcome.get("result")
 
 
+def _timed_out_worker_active(job_id):
+    with _TIMED_OUT_LOCK:
+        worker = _TIMED_OUT_WORKERS.get(job_id)
+        if worker is None:
+            return False
+        if worker.is_alive():
+            return True
+        _TIMED_OUT_WORKERS.pop(job_id, None)
+        return False
+
 def run_job(job):
+    if _timed_out_worker_active(job["id"]):
+        return {"status": "blocked_active_worker", "job_id": job["id"],
+                "message": "A timed-out attempt is still running; retry is blocked to prevent overlapping work."}
     attempt = int(job.get("attempt_count", 0)) + 1
     started = run(
         "INSERT INTO scheduled_runs(job_id,status,result,attempt) VALUES(?,?,?,?)",
@@ -210,6 +226,15 @@ def run_job(job):
             "UPDATE scheduled_runs SET status=?,result=?,finished_at=CURRENT_TIMESTAMP WHERE id=?",
             ("error", error, started),
         )
+        if isinstance(exc, JobTimeoutError):
+            # A worker thread may still be executing. Do not automatically retry
+            # until a later scheduled interval, and skip it while still alive.
+            next_at = (_now() + timedelta(seconds=int(job["interval_seconds"]))).isoformat()
+            run(
+                "UPDATE scheduled_jobs SET last_run_at=CURRENT_TIMESTAMP,next_run_at=?,attempt_count=0,claimed_at=NULL,last_error=? WHERE id=?",
+                (next_at, error, job["id"]),
+            )
+            return {"run_id": started, "status": "timed_out", "attempt": attempt, "error": error}
         max_attempts = max(1, min(10, int(job.get("max_attempts", 3))))
         if attempt < max_attempts and bool(job.get("enabled", 1)):
             delay = _retry_delay(job.get("retry_delay_seconds", 60), attempt)
@@ -237,6 +262,8 @@ def _loop():
                 (_now().isoformat(),),
             )
             for job in due:
+                if _timed_out_worker_active(job["id"]):
+                    continue
                 lease_until = (_now() + timedelta(seconds=_LEASE_SECONDS)).isoformat()
                 with connect() as conn:
                     cur = conn.execute(
