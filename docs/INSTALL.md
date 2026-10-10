@@ -76,7 +76,7 @@ Terminal 2 — Nano web application:
 nano-ai web
 ```
 
-Open http://127.0.0.1:8000. Use Talk to chat; Memory for saved memories; Learning for feedback/lessons; Skills for reviewed skills; Knowledge and Web Research for local knowledge and explicit web fetches; Model for runtime status/import; Automation & Agents for bounded scheduled prompts, specialist role prompts and approved browser actions; Settings for talk style, speech and background checks; System for health, logs/status and backup/update tools.
+Open http://127.0.0.1:8000. On first application startup, Nano automatically checks the LiteRT-LM registry and starts importing the default Qwen3 4B Thinking model in the background when it is missing. This is enabled by default, requires internet and at least 3 GB free disk space, and may use several GB RAM when running. The Model page displays status and cancellation. To opt out, open Settings and disable `auto_download_model`; you can still start import manually from Model. Use Talk to chat; Memory for saved memories; Learning for feedback/lessons; Skills for reviewed skills; Knowledge and Web Research for local knowledge and explicit web fetches; Model for runtime status/import; Automation & Agents for bounded scheduled prompts, specialist role prompts and approved browser actions; Settings for talk style, speech and background checks; System for health, logs/status and backup/update tools.
 
 Check `nano-ai status`, `nano-ai model`, and `nano-ai doctor` if chat is not working. Confirm the served ID from `litert-lm list` and `http://127.0.0.1:9379/v1/models`.
 
