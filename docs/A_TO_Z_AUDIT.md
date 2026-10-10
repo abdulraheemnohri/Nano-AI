@@ -1,6 +1,6 @@
 # Nano AI A-to-Z Feature Audit
 
-Audit scope: current `main` source tree. Follow-up model/install audit: [A-to-Z recheck, 2026-10-10](A_TO_Z_RECHECK_2026-10-10.md). Follow-up model/install audit: [A-to-Z recheck, 2026-10-10](A_TO_Z_RECHECK_2026-10-10.md). This inventory distinguishes implemented code from constrained integrations and remaining production gaps. Source presence is not proof of a passing runtime test suite.
+Audit scope: current `main` source tree. Follow-up model/install audit: [A-to-Z recheck, 2026-10-10](A_TO_Z_RECHECK_2026-10-10.md). This inventory distinguishes implemented code from constrained integrations and remaining production gaps. Source presence is not proof of a passing runtime test suite.
 
 ## Implemented capabilities
 
