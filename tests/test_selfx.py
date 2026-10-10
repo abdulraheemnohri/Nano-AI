@@ -9,6 +9,9 @@ from nano.selfx import (
     record_lesson,
     run_self_check,
     update_goal,
+    propose_improvement,
+    list_improvements,
+    review_improvement,
 )
 
 
@@ -69,3 +72,23 @@ def test_self_check_is_read_only_and_reports_recommendations(selfx_db):
     assert result["model_weight_updates"] is False
     assert "selfx_goals" in result["counts"]
     assert any(item["kind"] == "planning" for item in result["recommendations"])
+
+
+
+def test_improvement_proposal_requires_review_and_never_auto_applies(selfx_db):
+    proposal = propose_improvement(
+        "Improve recovery diagnostics",
+        "Record retry outcomes and suggest a checkpoint restore when a task repeatedly fails.",
+        evidence=[{"source": "scheduler runs", "note": "Repeated failures observed"}],
+    )
+
+    assert proposal["status"] == "pending"
+    assert proposal["evidence"][0]["source"] == "scheduler runs"
+    assert list_improvements(status="pending")[0]["id"] == proposal["id"]
+
+    reviewed = review_improvement(proposal["id"], "approved")
+    assert reviewed["status"] == "approved"
+    assert list_improvements(status="pending") == []
+
+    with pytest.raises(ValueError):
+        review_improvement(proposal["id"], "applied")
