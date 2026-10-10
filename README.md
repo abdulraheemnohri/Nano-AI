@@ -1,5 +1,22 @@
 # Nano AI
 
+## Self-X: goals, planning, learning and research
+
+Nano AI now includes a local-first, policy-bounded Self-X foundation. It tracks persistent goals, decomposes them into ordered plans and explicit task records, records lessons and reflections, stores research provenance, evaluates answer feedback, and generates reviewable improvement proposals.
+
+- `GET /api/self/status`, `POST /api/self/check` — read-only diagnostics and runtime readiness.
+- `GET /api/self/evaluation` — descriptive local feedback and quality metrics; no model-weight changes.
+- `GET/POST /api/self/goals`, `PATCH /api/self/goals/{id}` — prioritized goals.
+- `GET/POST /api/self/plans`, `GET /api/self/plans/{id}`, `PATCH /api/self/plans/{id}` — goal-linked plans and progress.
+- `PATCH /api/self/tasks/{id}` — explicit task status/outcome recording. Completing every step completes its plan and goal.
+- `GET/POST /api/self/lessons`, `POST /api/self/reflections` — persistent learning notes and reflection history.
+- `GET/POST /api/self/research` — store source URLs, summaries, confidence, assessment and evidence.
+- `POST /api/self/research/fetch` — fetch public HTTPS material through the existing SSRF-hardened client, index it locally, and record its provenance as unassessed.
+- `GET/POST /api/self/improvements`, `PATCH /api/self/improvements/{id}` — review improvement proposals.
+- `POST /api/self/review-cycle` — summarize local task and feedback signals, record a reflection, and propose an improvement when warranted.
+
+These endpoints do not automatically execute plans, generated code, or proposals; change permissions; bypass approvals; or modify model weights. Web pages are untrusted evidence and should be independently cross-checked. Research fetch is an explicit user-initiated operation.
+
 Nano AI is a lightweight, privacy-first local talking assistant built around Qwen3 1.7B and the LiteRT-LM CLI. It includes persistent learning, reusable prompt skills, optional offline voice, and a bounded local tool registry.
 
 ## Runtime
