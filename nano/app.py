@@ -166,6 +166,19 @@ class SelfResearchIn(BaseModel):
     evidence: list[str] = Field(default_factory=list, max_length=20)
 
 
+
+class SelfTaskLessonIn(BaseModel):
+    topic: str = Field(min_length=1, max_length=160)
+    lesson: str = Field(min_length=1, max_length=6000)
+    confidence: float = Field(default=0.6, ge=0, le=1)
+
+
+class SelfSkillProposalIn(BaseModel):
+    name: str = Field(min_length=2, max_length=48)
+    description: str = Field(min_length=1, max_length=500)
+    prompt: str = Field(min_length=1, max_length=4000)
+
+
 class ChatIn(BaseModel): conversation_id:int=1; message:str
 class MemoryConsolidationIn(BaseModel): merged_content:str|None=Field(default=None,max_length=12000)
 class FeedbackIn(BaseModel):
