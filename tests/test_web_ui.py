@@ -5,7 +5,7 @@ from nano import web
 
 def test_every_dom_id_referenced_by_the_ui_script_exists_in_the_html():
     html = web.HTML
-    referenced = set(re.findall(r"\\$\\('([^']+)'\\)", web.JS))
+    referenced = set(re.findall(r"\$\('([^']+)'\)", web.JS))
     defined = set(re.findall(r"id='([^']+)'", html))
     missing = sorted(i for i in referenced if i not in defined)
     assert missing == [], f"UI script references missing element ids: {missing}"
