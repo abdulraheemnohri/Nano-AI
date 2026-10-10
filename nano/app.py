@@ -834,6 +834,18 @@ def selfx_research_fetch(x: SelfResearchFetchIn):
     except ValueError as e: raise HTTPException(400, str(e))
     except RuntimeError as e: raise HTTPException(502, str(e))
 
+@app.post("/api/self/plans/{plan_id}/replan")
+def selfx_replan(plan_id: int):
+    try:
+        return replan_failed_tasks(plan_id)
+    except KeyError as e:
+        raise HTTPException(404, str(e))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/self/research/compare")
+
 def selfx_research_compare(question: str, limit: int = 100):
     try:
         return compare_research(question, limit)
