@@ -26,4 +26,4 @@ def test_ensure_disk_space_passes_with_enough_space(tmp_path, monkeypatch):
 def test_import_task_refused_without_disk_space(tmp_path, monkeypatch):
     _low_space(monkeypatch, tmp_path, free=100)
     with pytest.raises(ValueError, match="free disk space"):
-        model_manager.start_import_task("litert-community/Qwen3-1.7B", "Qwen3-1.7B_dynamic_wi4b32_afp32.litertlm", "qwen3-1.7b")
+        model_manager.start_import_task("litert-community/Qwen3-4B-Thinking-2507", "Qwen3_4b_thinking_dynamic_wi4b32_afp32.litertlm", "qwen3-4b-thinking-2507")

@@ -47,7 +47,7 @@ Goal states are `planned`, `active`, `blocked`, `completed`, and `cancelled`; pr
 
 Nano uses the official LiteRT-LM CLI as its inference runtime. LiteRT-LM provides an OpenAI-compatible local server on port 9379, so Nano sends chat requests to `/v1/chat/completions`.
 
-Selected Qwen3 4B-Thinking-2507 artifact: `Qwen3_4b_thinking_dynamic_wi4b32_afp32.litertlm`, about 932 MB, 4096-token context variant.
+Selected Qwen3 4B-Thinking-2507 artifact: `Qwen3_4b_thinking_dynamic_wi4b32_afp32.litertlm`, about 2.1 GB (2,274,193,168 bytes), 4096-token context variant.
 
 ## Linux / macOS
 
@@ -131,7 +131,7 @@ Built-in tools remain local and allowlisted. Optional restricted terminal and Pl
 
 ## Automatic model setup
 
-Open the Model page and choose **Auto setup / download default model**. Nano checks whether the LiteRT-LM CLI is installed and whether the configured Qwen3 4B-Thinking-2507 model is listed in the registry. If it is missing, Nano runs the project's configured LiteRT-LM import operation in a background task and exposes status at `GET /api/models/auto-setup`. Starting setup is an explicit user action because the model may require about 1 GB of storage and bandwidth. The setup process does not silently download models on application startup. The Model page also provides a custom import form for a user-supplied Hugging Face repository, exact artifact filename, and local model ID; use artifact names supported by your installed LiteRT-LM release. For API clients, `POST /api/models/import-task` queues a validated custom import without holding the request open; poll `GET /api/models/auto-setup` for `queued`, `running`, `complete`, or `error` state. Only one model setup/import task can run at a time.
+Open the Model page and choose **Auto setup / download default model**. Nano checks whether the LiteRT-LM CLI is installed and whether the configured Qwen3 4B-Thinking-2507 model is listed in the registry. If it is missing, Nano runs the project's configured LiteRT-LM import operation in a background task and exposes status at `GET /api/models/auto-setup`. Starting setup is an explicit user action because the artifact is about 2.1 GB and Nano requires at least 3 GB free disk space before import. The setup process does not silently download models on application startup. The Model page also provides a custom import form for a user-supplied Hugging Face repository, exact artifact filename, and local model ID; use artifact names supported by your installed LiteRT-LM release. For API clients, `POST /api/models/import-task` queues a validated custom import without holding the request open; poll `GET /api/models/auto-setup` for `queued`, `running`, `complete`, or `error` state. Only one model setup/import task can run at a time.
 
 The Model page also renders two separate model lists: **served models** reported by the running LiteRT-LM endpoint (`/v1/models`) and **registry models** reported by the local `litert-lm list` command, with the configured model highlighted. Readiness is tri-state: the endpoint can be unreachable, reachable but not serving the configured model, or serving it. `GET /api/health` and `GET /api/ready` use the same classifier, and `/api/ready` returns 503 with an actionable detail message when the configured model is not served.
 
@@ -282,3 +282,8 @@ Inspect the supervisor at `GET /api/self/supervisor` or run a manual check with 
 ### Linux boot service (systemd user services)
 
 After installing Nano and LiteRT-LM, run `nano-ai install-user-service` to create and enable user-level systemd units for the local LiteRT-LM server and Nano web app. This is an explicit installation step; it does not run silently during package installation. Check them with `systemctl --user status nano-ai.service nano-ai-litert-lm.service`, logs with `journalctl --user -u nano-ai.service -f`, and disable them with `nano-ai uninstall-user-service`. User services start at login. For boot-before-login startup, an administrator may enable user lingering with `sudo loginctl enable-linger $USER`; this system-level choice is intentionally not made automatically. Linux/systemd only; Windows and macOS continue to use normal CLI startup.
+
+
+## Audit and release status
+
+See the [A-to-Z recheck (2026-10-10)](docs/A_TO_Z_RECHECK_2026-10-10.md) for corrected model metadata, install/voice/browser validation scope, and remaining release gates. The project is ready for controlled local testing, not production-certified.

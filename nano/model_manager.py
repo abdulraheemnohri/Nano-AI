@@ -76,12 +76,21 @@ def remove_model(model_id):
     raise RuntimeError("Model deletion is intentionally not automated; use the LiteRT-LM version's documented registry management command.")
 
 def info():
-    p=default_model_path()
+    p = default_model_path()
+    registry = registry_list()
+    file_exists = os.path.isfile(p)
     return {
-        "runtime":"litert-lm","name":config.MODEL_NAME,"registry_model":config.LITERT_MODEL,
-        "local_path":p,"local_file_installed":__import__("os").path.exists(p),
-        "local_file_size":__import__("os").path.getsize(p) if __import__("os").path.exists(p) else 0,
-        "registry_models":registry_list(),"url":MODEL_URL,"repository":MODEL_REPO
+        "runtime": "litert-lm",
+        "name": config.MODEL_NAME,
+        "registry_model": config.LITERT_MODEL,
+        "storage_mode": "LiteRT-LM model registry (managed by litert-lm CLI)",
+        "registry_model_installed": _registry_has_model(registry, config.LITERT_MODEL),
+        "local_path": p,
+        "local_file_installed": file_exists,
+        "local_file_size": os.path.getsize(p) if file_exists else 0,
+        "registry_models": registry,
+        "url": MODEL_URL,
+        "repository": MODEL_REPO,
     }
 
 def sha256(path=None):
@@ -225,7 +234,7 @@ def _auto_setup_worker():
                 _AUTO_STATE.update(status="complete", message="Configured model already appears in the LiteRT-LM registry.", model_id=config.LITERT_MODEL, progress=100, phase="complete")
             return
         with _AUTO_LOCK:
-            _AUTO_STATE.update(status="running", message="Importing the default Qwen3 1.7B model. This may take a while and use about 1 GB of storage and network data.", model_id=config.LITERT_MODEL)
+            _AUTO_STATE.update(status="running", message="Importing the default Qwen3 4B-Thinking-2507 model (about 2.1 GB). Ensure at least 3 GB free disk space and enough RAM; the 4B reasoning model may take several GB of memory.", model_id=config.LITERT_MODEL)
         if _CANCEL_EVENT.is_set(): raise RuntimeError("Model import cancelled by user.")
         imported = _tracked_import(MODEL_REPO, MODEL_FILE, config.LITERT_MODEL)
         with _AUTO_LOCK:

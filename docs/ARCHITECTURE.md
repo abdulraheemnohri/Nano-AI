@@ -6,7 +6,7 @@ Nano is a lightweight local-first assistant with explicit learning and reusable 
 1. Web/API — FastAPI, local HTML/JS UI and health endpoints.
 2. Voice — optional local Vosk STT and Piper TTS.
 3. Conversation — SQLite conversation/message persistence.
-4. Brain — Qwen3 1.7B through LiteRT-LM's local OpenAI-compatible server.
+4. Brain — Qwen3 4B-Thinking-2507 through LiteRT-LM's local OpenAI-compatible server.
 5. Memory — searchable SQLite memories with confidence/source/audit state.
 6. Learning — explicit learning phrases, local knowledge import and auditable events.
 7. Skills — built-in prompts plus proposed skills requiring explicit acceptance.

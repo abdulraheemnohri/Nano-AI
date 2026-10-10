@@ -33,8 +33,8 @@ def _download(url, destination):
 
 def _install_python_extras():
     subprocess.run(
-        [sys.executable, "-m", "pip", "install", "-e", ".[voice,browser]"],
-        cwd=str(config.ROOT), check=True,
+        [sys.executable, "-m", "pip", "install", "vosk>=0.3.45", "sounddevice>=0.5", "piper-tts>=1.2.0", "playwright>=1.48"],
+        check=True,
     )
 
 

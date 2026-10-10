@@ -39,7 +39,18 @@ def test_model_import_state_is_persisted(monkeypatch, tmp_path):
     assert saved["progress"] == 37
 
 def test_registry_model_match_requires_a_complete_identifier():
-    assert model_manager._registry_has_model([{"raw": "qwen3-1.7b READY"}], "qwen3-1.7b")
-    assert not model_manager._registry_has_model([{"raw": "qwen3-1.7b-custom READY"}], "qwen3-1.7b")
-    assert not model_manager._registry_has_model([{"raw": "my-qwen3-1.7b READY"}], "qwen3-1.7b")
-    assert model_manager._registry_has_model([{"id": "Qwen3-1.7B"}], "qwen3-1.7b")
+    assert model_manager._registry_has_model([{"raw": "qwen3-4b-thinking-2507 READY"}], "qwen3-4b-thinking-2507")
+    assert not model_manager._registry_has_model([{"raw": "qwen3-4b-thinking-2507-custom READY"}], "qwen3-4b-thinking-2507")
+    assert not model_manager._registry_has_model([{"raw": "my-qwen3-4b-thinking-2507 READY"}], "qwen3-4b-thinking-2507")
+    assert model_manager._registry_has_model([{"id": "Qwen3-4B-Thinking-2507"}], "qwen3-4b-thinking-2507")
+
+
+def test_model_info_distinguishes_registry_import_from_local_file(monkeypatch, tmp_path):
+    monkeypatch.setattr(model_manager.config, "MODEL_DIR", tmp_path)
+    monkeypatch.setattr(model_manager.config, "MODEL_NAME", "not-downloaded-here.litertlm")
+    monkeypatch.setattr(model_manager.config, "LITERT_MODEL", "qwen3-4b-thinking-2507")
+    monkeypatch.setattr(model_manager, "registry_list", lambda: [{"raw": "qwen3-4b-thinking-2507 READY"}])
+    result = model_manager.info()
+    assert result["registry_model_installed"] is True
+    assert result["local_file_installed"] is False
+    assert result["storage_mode"].startswith("LiteRT-LM model registry")

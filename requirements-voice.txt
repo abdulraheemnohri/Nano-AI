@@ -1,2 +1,2 @@
-# Install the package plus its optional local voice dependencies.
+# Install the package plus optional local voice and browser dependencies.
 -e .[voice,browser]
