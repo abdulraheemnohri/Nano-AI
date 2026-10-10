@@ -629,7 +629,7 @@ def webhook_send_api(x:WebhookSendIn):
 @app.post("/mcp")
 def mcp_endpoint(message:dict):
     response = handle_message(message)
-    if response is None: return JSONResponse({},status_code=202)
+    if response is None: return Response(status_code=202)
     return response
 
 @app.get("/api/system")
