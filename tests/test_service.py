@@ -23,3 +23,35 @@ def test_user_service_builder_rejects_remote_bind(monkeypatch):
     import pytest
     with pytest.raises(RuntimeError, match="loopback-only"):
         build_user_units("/usr/bin/nano-ai", "/usr/bin/litert-lm")
+
+
+def test_installer_refuses_to_enable_bad_user_units(monkeypatch, tmp_path):
+    import subprocess
+    import pytest
+    from nano import service
+
+    monkeypatch.setattr(service.sys, "platform", "linux")
+    monkeypatch.setattr(service.shutil, "which", lambda name: {
+        "systemctl": "/usr/bin/systemctl",
+        "nano-ai": "/venv/bin/nano-ai",
+        "litert-lm": "/venv/bin/litert-lm",
+    }.get(name))
+    monkeypatch.setattr(service.Path, "home", lambda: tmp_path)
+    monkeypatch.setattr(config, "HOST", "127.0.0.1")
+    monkeypatch.setattr(config, "LITERT_URL", "http://127.0.0.1:9379")
+
+    calls = []
+
+    def fake_run(args, **kwargs):
+        calls.append(args)
+        if "show" in args:
+            return type("Result", (), {
+                "returncode": 0, "stdout": "bad-setting\n",
+                "stderr": "Invalid user service setting",
+            })()
+        return type("Result", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+
+    monkeypatch.setattr(service.subprocess, "run", fake_run)
+    with pytest.raises(RuntimeError, match="did not load nano-ai-litert-lm.service"):
+        service.install_user_services()
+    assert not any("enable" in args for args in calls)
