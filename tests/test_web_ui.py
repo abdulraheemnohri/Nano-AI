@@ -70,6 +70,7 @@ def test_standalone_web_javascript_parses_with_node():
         [node, "--check", "-"],
         input=web.JS,
         text=True,
+        encoding="utf-8",
         capture_output=True,
         timeout=15,
         check=False,

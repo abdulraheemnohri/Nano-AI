@@ -1,5 +1,8 @@
-fastapi>=0.115,<1
-uvicorn[standard]>=0.34,<1
-httpx>=0.28,<1
-pydantic>=2.10,<3
-python-dotenv>=1.0,<2
+# Install the package and its authoritative core dependencies from pyproject.toml.
+-e .
+
+# Optional feature groups:
+#   python -m pip install -e ".[voice]"
+#   python -m pip install -e ".[browser]"
+#   python -m pip install -e ".[desktop]"
+#   python -m pip install -e ".[test]"

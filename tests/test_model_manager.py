@@ -37,3 +37,9 @@ def test_model_import_state_is_persisted(monkeypatch, tmp_path):
     saved = json.loads(state_file.read_text(encoding="utf-8"))
     assert saved["status"] == "running"
     assert saved["progress"] == 37
+
+def test_registry_model_match_requires_a_complete_identifier():
+    assert model_manager._registry_has_model([{"raw": "qwen3-1.7b READY"}], "qwen3-1.7b")
+    assert not model_manager._registry_has_model([{"raw": "qwen3-1.7b-custom READY"}], "qwen3-1.7b")
+    assert not model_manager._registry_has_model([{"raw": "my-qwen3-1.7b READY"}], "qwen3-1.7b")
+    assert model_manager._registry_has_model([{"id": "Qwen3-1.7B"}], "qwen3-1.7b")

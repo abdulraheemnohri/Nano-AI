@@ -1,4 +1,2 @@
--r requirements.txt
-vosk>=0.3.45
-sounddevice>=0.5
-piper-tts>=1.2.0
+# Install the package plus its optional local voice dependencies.
+-e .[voice]

@@ -192,6 +192,23 @@ def auto_setup_status():
         return dict(_AUTO_STATE)
 
 
+def _registry_has_model(registry, model_id):
+    """Match a complete registry token, never a model ID substring."""
+    target = str(model_id or "").strip()
+    if not target:
+        return False
+    pattern = re.compile(r"(?<![A-Za-z0-9._-])" + re.escape(target) + r"(?![A-Za-z0-9._-])", re.IGNORECASE)
+    for item in registry:
+        if not isinstance(item, dict):
+            continue
+        explicit_id = item.get("model_id") or item.get("id")
+        if explicit_id is not None and str(explicit_id).strip().casefold() == target.casefold():
+            return True
+        if pattern.search(str(item.get("raw", ""))):
+            return True
+    return False
+
+
 def _auto_setup_worker():
     try:
         if _CANCEL_EVENT.is_set():
@@ -203,7 +220,7 @@ def _auto_setup_worker():
         if not binary:
             raise RuntimeError("LiteRT-LM CLI is missing. Install it with: python -m pip install -U litert-lm")
         registry = registry_models()
-        if any(config.LITERT_MODEL.lower() in str(item.get("raw", "")).lower() for item in registry):
+        if _registry_has_model(registry, config.LITERT_MODEL):
             with _AUTO_LOCK:
                 _AUTO_STATE.update(status="complete", message="Configured model already appears in the LiteRT-LM registry.", model_id=config.LITERT_MODEL, progress=100, phase="complete")
             return

@@ -128,3 +128,13 @@ def test_skill_reject_lifecycle(tmp_path,monkeypatch):
     assert any(x['id']==pid for x in proposals())
     reject(pid)
     assert not any(x['id']==pid for x in proposals())
+
+def test_build_context_caps_legacy_oversized_memory(monkeypatch):
+    from nano import core
+    monkeypatch.setattr(core, "search_memory", lambda *args: [{"content": "x" * 50000}])
+    monkeypatch.setattr(core, "int_value", lambda *args: 6)
+    monkeypatch.setattr(core, "active_prompts", lambda: "")
+    monkeypatch.setattr(core, "public", lambda: {"language": "auto"})
+    monkeypatch.setattr(core, "feedback_examples", lambda *args: [])
+    context = core.build_context("test")
+    assert len(context.split("Relevant memory:\n", 1)[1]) <= core.MAX_MEMORY_CONTEXT_CHARS
