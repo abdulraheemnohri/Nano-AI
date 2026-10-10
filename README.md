@@ -194,7 +194,9 @@ GitHub Actions runs the test suite on pushes to `main`, pull requests targeting 
 
 Open **Web Research**, search the web, then choose a result to read and save to Nano's local knowledge database. You can also paste a public HTTPS page URL. Nano limits page size and supported content types, blocks local/private network targets, and extracts readable text without executing page JavaScript. Research endpoints are `POST /api/research/search` and `POST /api/research/learn`. Web content is untrusted reference material; it is not run as code or treated as system instructions. Searching and fetching pages require an internet connection; saved knowledge remains in Nano's local database.
 
-## Voice and browser setup\n\nInstall optional offline voice assets and Playwright Chromium automatically with `nano-ai setup-extras` (run from the project's virtual environment). It installs optional dependencies and downloads the default English Vosk and Piper voice files into `models/`. See [docs/INSTALL.md](docs/INSTALL.md) for Linux, macOS, Windows, wheel-transfer, autostart, and troubleshooting instructions. Voice flow: Microphone -> local WAV -> Vosk STT -> Qwen3 4B-Thinking-2507 through LiteRT-LM -> Piper TTS -> speaker.
+## Voice and browser setup
+
+Install optional offline voice assets and Playwright Chromium automatically with `nano-ai setup-extras` (run from the project's virtual environment). It installs optional dependencies and downloads the default English Vosk and Piper voice files into `models/`. See [docs/INSTALL.md](docs/INSTALL.md) for Linux, macOS, Windows, wheel-transfer, autostart, and troubleshooting instructions. Voice flow: Microphone -> local WAV -> Vosk STT -> Qwen3 4B-Thinking-2507 through LiteRT-LM -> Piper TTS -> speaker.
 
 No browser SpeechRecognition or cloud audio processing is required.
 
