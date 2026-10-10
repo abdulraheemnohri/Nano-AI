@@ -282,3 +282,8 @@ Inspect the supervisor at `GET /api/self/supervisor` or run a manual check with 
 ### Linux boot service (systemd user services)
 
 After installing Nano and LiteRT-LM, run `nano-ai install-user-service` to create and enable user-level systemd units for the local LiteRT-LM server and Nano web app. This is an explicit installation step; it does not run silently during package installation. Check them with `systemctl --user status nano-ai.service nano-ai-litert-lm.service`, logs with `journalctl --user -u nano-ai.service -f`, and disable them with `nano-ai uninstall-user-service`. User services start at login. For boot-before-login startup, an administrator may enable user lingering with `sudo loginctl enable-linger $USER`; this system-level choice is intentionally not made automatically. Linux/systemd only; Windows and macOS continue to use normal CLI startup.
+
+
+## Audit and release status
+
+See the [A-to-Z recheck (2026-10-10)](docs/A_TO_Z_RECHECK_2026-10-10.md) for corrected model metadata, install/voice/browser validation scope, and remaining release gates. The project is ready for controlled local testing, not production-certified.
