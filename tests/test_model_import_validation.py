@@ -5,13 +5,13 @@ from nano.model_manager import validate_import_request
 
 def test_validates_default_model_import():
     assert validate_import_request(
-        "litert-community/Qwen3-1.7B",
-        "Qwen3-1.7B_dynamic_wi4b32_afp32.litertlm",
-        "qwen3-1.7b",
+        "litert-community/Qwen3-4B-Thinking-2507",
+        "Qwen3_4b_thinking_dynamic_wi4b32_afp32.litertlm",
+        "qwen3-4b-thinking-2507",
     ) == (
-        "litert-community/Qwen3-1.7B",
-        "Qwen3-1.7B_dynamic_wi4b32_afp32.litertlm",
-        "qwen3-1.7b",
+        "litert-community/Qwen3-4B-Thinking-2507",
+        "Qwen3_4b_thinking_dynamic_wi4b32_afp32.litertlm",
+        "qwen3-4b-thinking-2507",
     )
 
 
