@@ -21,12 +21,12 @@ def build_context(query):
     memory_lines = []
     remaining = MAX_MEMORY_CONTEXT_CHARS
     for memory in ms:
-        if remaining <= 0:
+        if remaining <= 2:
             break
         content = str(memory.get("content", "")).strip()
         if not content:
             continue
-        line = "- " + content[:remaining]
+        line = "- " + content[:remaining - 2]
         memory_lines.append(line)
         remaining -= len(line)
     mt = "\n".join(memory_lines)
