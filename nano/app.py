@@ -1,4 +1,5 @@
 from pathlib import Path
+from contextlib import asynccontextmanager
 import sqlite3
 from tempfile import NamedTemporaryFile
 from datetime import datetime, timezone
@@ -30,18 +31,19 @@ from .mcp import handle_message
 from .desktop import desktop_action
 from .updates import check_update, apply_update, rollback_update
 
-app=FastAPI(title="Nano AI",version="0.5.0")
-@app.on_event("startup")
-def startup():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     if not is_loopback_host(config.HOST) and not configured_token():
         raise RuntimeError("Refusing remote API startup without NANO_API_TOKEN.")
     init_db()
     seed()
     start_scheduler()
+    try:
+        yield
+    finally:
+        stop_scheduler()
 
-@app.on_event("shutdown")
-def shutdown():
-    stop_scheduler()
+app=FastAPI(title="Nano AI",version="0.5.0",lifespan=lifespan)
 
 @app.middleware("http")
 async def protect_api(request: Request, call_next):
