@@ -3,7 +3,7 @@ import pytest
 from nano import config, db
 from nano.selfx import create_goal, init_selfx_db
 from nano.selfx_engine import (
-    create_plan, get_plan, init_selfx_engine_db, list_research,
+    advance_plan, create_plan, get_plan, init_selfx_engine_db, list_research,
     record_research, run_review_cycle, update_plan_status, update_task,
 )
 
@@ -71,3 +71,38 @@ def test_review_cycle_records_reflection_and_does_not_execute(engine_db):
     assert result["reflection"]["task_outcomes"]["failed"] == 1
     assert result["improvement_proposal"]["status"] == "pending"
     assert db.rows("SELECT COUNT(*) AS n FROM selfx_reflections")[0]["n"] == 1
+
+
+
+def test_advance_plan_activates_only_next_task_without_execution(engine_db):
+    goal = create_goal("Advance safely")
+    plan = create_plan(goal["id"], "Sequential plan", steps=["Inspect", "Implement", "Verify"])
+    update_plan_status(plan["id"], "active")
+
+    first = advance_plan(plan["id"])
+    assert first["advanced"] is True
+    assert first["execution_started"] is False
+    assert first["next_task"]["title"] == "Inspect"
+    assert first["next_task"]["status"] == "active"
+
+    # Repeated advance is idempotent while the caller has not reported an outcome.
+    repeated = advance_plan(plan["id"])
+    assert repeated["advanced"] is False
+    assert repeated["next_task"]["id"] == first["next_task"]["id"]
+
+    update_task(first["next_task"]["id"], "completed", "Inspection done")
+    second = advance_plan(plan["id"])
+    assert second["advanced"] is True
+    assert second["next_task"]["title"] == "Implement"
+
+
+def test_advance_plan_requires_active_plan_and_stops_on_failed_task(engine_db):
+    goal = create_goal("Do not skip failure")
+    plan = create_plan(goal["id"], "Guarded plan", steps=["First", "Second"])
+    with pytest.raises(ValueError, match="must be active"):
+        advance_plan(plan["id"])
+
+    update_plan_status(plan["id"], "active")
+    update_task(plan["tasks"][0]["id"], "failed", "Needs investigation")
+    with pytest.raises(ValueError, match="failed, blocked, or cancelled"):
+        advance_plan(plan["id"])

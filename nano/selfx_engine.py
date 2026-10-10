@@ -140,6 +140,53 @@ def update_task(task_id, status, result=""):
     return get_plan(current["plan_id"])
 
 
+def advance_plan(plan_id):
+    """Activate the next sequential task in an active plan without executing it."""
+    plan = get_plan(plan_id)
+    if not plan:
+        raise KeyError("Plan not found.")
+    if plan["status"] != "active":
+        raise ValueError("Plan must be active before it can advance.")
+    tasks = plan["tasks"]
+    active = [task for task in tasks if task["status"] == "active"]
+    if active:
+        return {
+            "plan": plan,
+            "next_task": active[0],
+            "advanced": False,
+            "execution_started": False,
+            "message": "A task is already active; record its outcome before advancing.",
+        }
+    for task in tasks:
+        if task["status"] in {"failed", "blocked", "cancelled"}:
+            raise ValueError(
+                "Plan contains a failed, blocked, or cancelled task; review the outcome or create a new plan."
+            )
+        if task["status"] == "pending":
+            # Sequential execution: every earlier task must already be complete.
+            earlier = [item for item in tasks if item["position"] < task["position"]]
+            if any(item["status"] != "completed" for item in earlier):
+                raise ValueError("Earlier tasks must be completed before advancing.")
+            updated = update_task(task["id"], "active", task["result"])
+            next_task = next(item for item in updated["tasks"] if item["id"] == task["id"])
+            return {
+                "plan": updated,
+                "next_task": next_task,
+                "advanced": True,
+                "execution_started": False,
+                "message": "Task activated for an external caller. Nano did not execute it.",
+            }
+    if tasks and all(task["status"] == "completed" for task in tasks):
+        return {
+            "plan": plan,
+            "next_task": None,
+            "advanced": False,
+            "execution_started": False,
+            "message": "All tasks are complete.",
+        }
+    raise ValueError("No eligible next task. Review the plan state and task outcomes.")
+
+
 def record_research(question, source_url, summary, source_title="", credibility="unassessed", confidence=0.5, checked_at=None, evidence=None):
     question = _text(question, "question", 1000)
     source_url = _text(source_url, "source_url", 2000)

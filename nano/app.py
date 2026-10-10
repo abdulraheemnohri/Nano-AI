@@ -31,7 +31,7 @@ from .mcp import handle_message
 from .desktop import desktop_action
 from .updates import check_update, apply_update, rollback_update
 from .selfx import init_selfx_db, run_self_check, create_goal, list_goals, update_goal, record_lesson, list_lessons, reflect, propose_improvement, list_improvements, review_improvement
-from .selfx_engine import init_selfx_engine_db, create_plan, get_plan, list_plans, update_plan_status, update_task, record_research, list_research, run_review_cycle
+from .selfx_engine import init_selfx_engine_db, create_plan, get_plan, list_plans, update_plan_status, update_task, advance_plan, record_research, list_research, run_review_cycle
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -786,6 +786,12 @@ def selfx_plan_update(plan_id: int, x: SelfPlanStatusIn):
     try: return update_plan_status(plan_id, x.status)
     except KeyError as e: raise HTTPException(404, str(e))
     except ValueError as e: raise HTTPException(400, str(e))
+
+@app.post("/api/self/plans/{plan_id}/advance")
+def selfx_plan_advance(plan_id: int):
+    try: return advance_plan(plan_id)
+    except KeyError as e: raise HTTPException(404, str(e))
+    except ValueError as e: raise HTTPException(409, str(e))
 
 @app.patch("/api/self/tasks/{task_id}")
 def selfx_task_update(task_id: int, x: SelfTaskUpdateIn):
