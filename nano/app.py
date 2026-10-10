@@ -64,7 +64,10 @@ async def protect_api(request: Request, call_next):
         token = configured_token()
         peer = request.client.host if request.client else ""
         remote_request = bool(peer) and peer not in {"testclient", "localhost", "::ffff:127.0.0.1"} and not is_loopback_host(peer)
-        required = bool(token) or remote_request or not is_loopback_host(config.HOST)
+        # A local reverse proxy can hide the original remote peer address. Treat
+        # forwarding headers as a remote-access signal and require an API token.
+        forwarded_request = any(request.headers.get(name) for name in ("forwarded", "x-forwarded-for", "x-real-ip"))
+        required = bool(token) or remote_request or forwarded_request or not is_loopback_host(config.HOST)
         supplied = request.headers.get("authorization", "")
         if supplied.lower().startswith("bearer "):
             supplied = supplied[7:].strip()
