@@ -45,7 +45,11 @@ def main():
     a=p.parse_args()
     if a.cmd=="init": init_db(); print("Nano initialized")
     elif a.cmd=="status": print(status())
-    elif a.cmd=="setup-extras":\n        from .setup_extras import setup\n        try: print(json.dumps(setup(), indent=2, ensure_ascii=False))\n        except (RuntimeError, OSError, subprocess.SubprocessError, ValueError) as e: raise SystemExit(str(e))\n    elif a.cmd=="doctor":
+    elif a.cmd=="setup-extras":
+        from .setup_extras import setup
+        try: print(json.dumps(setup(), indent=2, ensure_ascii=False))
+        except (RuntimeError, OSError, subprocess.SubprocessError, ValueError) as e: raise SystemExit(str(e))
+    elif a.cmd=="doctor":
         from .doctor import run_checks
         report = run_checks()
         print(json.dumps(report, indent=2, ensure_ascii=False))
