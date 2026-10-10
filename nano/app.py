@@ -3,7 +3,7 @@ import sqlite3
 from tempfile import NamedTemporaryFile
 from datetime import datetime, timezone
 from fastapi import FastAPI,HTTPException,UploadFile,File,Request
-from fastapi.responses import HTMLResponse,FileResponse,JSONResponse
+from fastapi.responses import HTMLResponse,FileResponse,JSONResponse,Response
 from starlette.background import BackgroundTask
 from pydantic import BaseModel, Field
 from . import config
@@ -17,7 +17,7 @@ from .settings import public,set_value,reset,schema as settings_schema,int_value
 from .runtime import status,installed_models,registry_models,model_readiness
 from .model_manager import info,import_model,start_auto_setup,auto_setup_status,start_import_task,cancel_import_task
 from .research import search_web,research_and_learn
-from .web import HTML
+from .web import HTML, CSS, JS
 from .voice import transcribe_wav,speak,voice_status
 from .tools import list_tools, run_tool, set_enabled as set_tool_enabled
 from .security import configured_token, is_loopback_host, max_request_bytes, request_rate_allowed
@@ -152,6 +152,12 @@ class WebhookSendIn(BaseModel):
 
 @app.get("/",response_class=HTMLResponse)
 def home(): return HTML
+
+@app.get("/assets/nano.css")
+def web_styles(): return Response(CSS, media_type="text/css; charset=utf-8")
+
+@app.get("/assets/nano.js")
+def web_script(): return Response(JS, media_type="application/javascript; charset=utf-8")
 
 @app.post("/api/talk/proactive")
 def proactive_talk(x:ProactiveTalkIn):
