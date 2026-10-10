@@ -1,12 +1,12 @@
 # Nano AI — Final A-to-Z Release Review
 
-Review date: 2026-10-09  
+Review date: 2026-10-10  
 Repository: [abdulraheemnohri/Nano-AI](https://github.com/abdulraheemnohri/Nano-AI)  
 Reviewed branch: `main`
 
 ## Executive decision
 
-**Ready for controlled local testing; not production-certified.** The checked-in project implements the documented local-first assistant scope and has a green CI test suite. Optional integrations and machine-specific behavior still need smoke testing on each target host. Do not describe the project as a fully autonomous unrestricted agent or as a distributed multi-agent platform.
+**Ready for controlled local testing; not production-certified.** The Qwen3 4B default, optional voice/browser setup, and expanded installation guide were merged in PR #36. Main-branch CI run [38036864797](https://github.com/abdulraheemnohri/Nano-AI/actions/runs/38036864797) completed successfully across Linux, Windows, macOS, and package-build jobs. The model import, inference, voice and browser still require target-machine smoke tests. The checked-in project implements the documented local-first assistant scope and has a green CI test suite. Optional integrations and machine-specific behavior still need smoke testing on each target host. Do not describe the project as a fully autonomous unrestricted agent or as a distributed multi-agent platform.
 
 ## A-to-Z implementation inventory
 
