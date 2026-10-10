@@ -23,6 +23,7 @@ from .voice import transcribe_wav,speak,voice_status
 from .tools import list_tools, run_tool, set_enabled as set_tool_enabled
 from .security import configured_token, is_loopback_host, max_request_bytes, request_rate_allowed
 from .scheduler import start_scheduler, stop_scheduler, list_jobs, list_runs, create_job, update_job, delete_job, retry_job
+from .supervisor import start_supervisor, stop_supervisor, supervisor_status, run_supervisor_cycle
 from .agents import ROLES, delegate, delegate_many
 from .terminal import run_command
 from .browser import browser_action
@@ -42,9 +43,11 @@ async def lifespan(app: FastAPI):
     init_selfx_engine_db()
     seed()
     start_scheduler()
+    start_supervisor()
     try:
         yield
     finally:
+        stop_supervisor()
         stop_scheduler()
 
 app=FastAPI(title="Nano AI",version="0.5.0",lifespan=lifespan)
@@ -708,6 +711,19 @@ def mcp_endpoint(message:dict):
     response = handle_message(message)
     if response is None: return Response(status_code=202)
     return response
+
+
+@app.get("/api/self/supervisor")
+def selfx_supervisor_status(limit: int = 30):
+    return supervisor_status(limit)
+
+
+@app.post("/api/self/supervisor/run")
+def selfx_supervisor_run():
+    try:
+        return run_supervisor_cycle(force=True)
+    except Exception as e:
+        raise HTTPException(503, "Supervisor check failed: " + str(e)[:500])
 
 
 @app.get("/api/self/status")
