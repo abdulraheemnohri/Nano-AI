@@ -30,7 +30,7 @@ from .messaging import telegram_send, webhook_send
 from .mcp import handle_message
 from .desktop import desktop_action
 from .updates import check_update, apply_update, rollback_update
-from .selfx import init_selfx_db, run_self_check, create_goal, list_goals, update_goal, record_lesson, list_lessons, reflect
+from .selfx import init_selfx_db, run_self_check, create_goal, list_goals, update_goal, record_lesson, list_lessons, reflect, propose_improvement, list_improvements, review_improvement
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -119,6 +119,16 @@ class SelfReflectionIn(BaseModel):
     scope: str = Field(min_length=1, max_length=160)
     summary: str = Field(min_length=1, max_length=6000)
     findings: list[str] = Field(default_factory=list, max_length=50)
+
+
+class SelfImprovementIn(BaseModel):
+    title: str = Field(min_length=1, max_length=160)
+    description: str = Field(min_length=1, max_length=6000)
+    evidence: list[dict] = Field(default_factory=list, max_length=20)
+
+
+class SelfImprovementReviewIn(BaseModel):
+    status: str
 
 
 class ChatIn(BaseModel): conversation_id:int=1; message:str
@@ -719,6 +729,32 @@ def selfx_lesson_create(x: SelfLessonIn):
 def selfx_reflection_create(x: SelfReflectionIn):
     try:
         return reflect(x.scope, x.summary, x.findings)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/self/improvements")
+def selfx_improvements(status: str | None = None, limit: int = 100, offset: int = 0):
+    try:
+        return list_improvements(status, limit, offset)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/self/improvements")
+def selfx_improvement_create(x: SelfImprovementIn):
+    try:
+        return propose_improvement(x.title, x.description, x.evidence)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.patch("/api/self/improvements/{proposal_id}")
+def selfx_improvement_review(proposal_id: int, x: SelfImprovementReviewIn):
+    try:
+        return review_improvement(proposal_id, x.status)
+    except KeyError as e:
+        raise HTTPException(404, str(e))
     except ValueError as e:
         raise HTTPException(400, str(e))
 
