@@ -674,13 +674,37 @@ def mcp_endpoint(message:dict):
 
 @app.get("/api/self/status")
 def selfx_status():
-    return run_self_check()
+    report = run_self_check()
+    runtime_state = status()
+    readiness = model_readiness(runtime_state)
+    report["runtime"] = {
+        "reachable": bool(runtime_state.get("reachable")),
+        "readiness": readiness,
+    }
+    if readiness.get("status") != "ok":
+        report["recommendations"].append({
+            "kind": "runtime",
+            "priority": "high",
+            "action": "Inspect LiteRT-LM service status, model configuration, and runtime logs; no automatic restart was attempted.",
+        })
+    return report
 
 
 @app.post("/api/self/check")
 def selfx_check():
     """Run a read-only self-check; it never executes recommendations."""
-    return run_self_check()
+    return selfx_status()
+
+
+@app.get("/api/self/evaluation")
+def selfx_evaluation():
+    """Summarize existing feedback and answer-quality signals without model updates."""
+    return {
+        "feedback": feedback_summary(),
+        "quality": quality_report(),
+        "model_weight_updates": False,
+        "next_step": "Use these signals to propose a reviewable improvement; do not treat them as proof that a change has been applied.",
+    }
 
 
 @app.get("/api/self/goals")
