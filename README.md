@@ -18,6 +18,8 @@ Nano AI includes a policy-bounded Self-X foundation for recording goals, lessons
 - `POST /api/self/review-cycle` — summarize local task outcomes and explicit answer feedback, record a reflection, and create a pending improvement proposal when signals warrant review. It does not execute proposals.
 - `POST /api/self/plans/{id}/replan` — build a new draft plan from failed/blocked tasks; it never executes the replacement plan.
 - `GET /api/self/research/compare?question=...` — summarize saved source diversity and assessment labels. Lexical overlap is only a triage signal and does not establish truth or contradiction.
+- `POST /api/self/tasks/{id}/learn` — save a caller-written lesson from a completed/failed/blocked task, with outcome and evidence links; pending tasks cannot be treated as experience.
+- `POST /api/self/lessons/{id}/skill-proposal` — turn a saved lesson into a pending skill proposal. Activation still requires explicit approval through the existing skills API.
 - `GET /api/self/improvements`, `POST /api/self/improvements`, `PATCH /api/self/improvements/{id}` — store improvement proposals with evidence and explicitly review them as approved or rejected. Review does not apply code or change permissions.
 
 Goal states are `planned`, `active`, `blocked`, `completed`, and `cancelled`; priorities range from 1 (highest) to 5. Self-check is read-only and does not execute recommendations. These endpoints do not change permissions, bypass approval, execute generated code, or modify model weights. Internet research remains evidence to validate, not trusted instructions.

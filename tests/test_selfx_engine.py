@@ -96,3 +96,35 @@ def test_research_comparison_reports_source_diversity_without_claiming_truth(eng
     assert report["distinct_source_count"] == 2
     assert report["needs_independent_review"] is True
     assert "cannot establish truth" in report["interpretation"]
+
+
+def test_task_outcome_can_create_evidence_linked_lesson(engine_db):
+    from nano.selfx_engine import learn_from_task
+
+    goal = create_goal("Learn from task evidence")
+    plan = create_plan(goal["id"], "Evidence plan", steps=["Run verification"])
+    task_id = plan["tasks"][0]["id"]
+    with pytest.raises(ValueError):
+        learn_from_task(task_id, "verification", "Pending tasks are not outcomes.")
+    update_task(task_id, "completed", "The regression suite passed.")
+    lesson = learn_from_task(task_id, "verification", "Run the regression suite before accepting this class of change.")
+    assert lesson["source"] == f"task:{task_id}"
+    assert lesson["outcome"] == "completed"
+    assert lesson["evidence"][0]["source"] == "selfx_tasks"
+    assert "regression suite passed" in lesson["evidence"][0]["note"]
+
+
+def test_lesson_can_seed_pending_skill_proposal_without_enabling_it(engine_db):
+    from nano.selfx import record_lesson
+    from nano.selfx_engine import propose_skill_from_lesson
+
+    lesson = record_lesson("testing", "Always add a regression test for this failure mode.")
+    result = propose_skill_from_lesson(
+        lesson["id"], "regression-helper", "Suggest focused regression tests.",
+        "When a reproducible bug is identified, propose a focused regression test and explain what it protects.",
+    )
+    assert result["status"] == "pending"
+    assert result["source_lesson_id"] == lesson["id"]
+    assert result["auto_enabled"] is False
+    proposal = db.rows("SELECT status FROM skill_proposals WHERE id=?", (result["proposal_id"],))[0]
+    assert proposal["status"] == "pending"
