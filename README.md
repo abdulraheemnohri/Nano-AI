@@ -34,6 +34,18 @@ Start Nano Web UI in another terminal:
 
 Open http://127.0.0.1:8000.
 
+### Web UI files
+
+The responsive single-page UI is implemented with plain HTML, CSS, and JavaScript (no frontend framework):
+
+- `nano/static/index.html` — app shell and all 11 navigable pages.
+- `nano/static/app.css` — dark-first theme, light-theme overrides, responsive layout, panels, forms, and chat styling.
+- `nano/static/app.js` — page navigation, API calls, chat, pagination, model management, memory, learning, skills, tools, research, automation, settings, and system controls.
+- `nano/web.py` — loads the packaged UI assets.
+- `nano/app.py` — serves the page at `/`, stylesheet at `/assets/nano.css`, and JavaScript at `/assets/nano.js`.
+
+UI sections: Talk, Memory, Learning, Skills, Tools, Knowledge, Web Research, Automation & Agents, Model, Settings, and System. The existing backend APIs remain the source of truth; UI controls use the corresponding API routes rather than mock data.
+
 ## Windows PowerShell
 
     git clone https://github.com/abdulraheemnohri/Nano-AI.git
