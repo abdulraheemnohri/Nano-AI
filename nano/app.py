@@ -72,6 +72,19 @@ async def protect_api(request: Request, call_next):
             return JSONResponse({"detail":"Remote API access is disabled until NANO_API_TOKEN is configured."},status_code=503)
         if token and (not supplied or not __import__("hmac").compare_digest(supplied,token)):
             return JSONResponse({"detail":"Missing or invalid API token. Use Authorization: Bearer <token>."},status_code=401)
+    # Enforce a body limit even when the client uses chunked transfer encoding
+    # and omits Content-Length. Upload endpoints enforce their own streaming caps.
+    if is_api and request.method in {"POST", "PUT", "PATCH"} and not content_length and request.url.path not in {"/api/restore", "/api/voice/stt"}:
+        limit = max_request_bytes()
+        body = bytearray()
+        async for chunk in request.stream():
+            body.extend(chunk)
+            if len(body) > limit:
+                return JSONResponse({"detail": "Request body exceeds configured size limit for this endpoint."}, status_code=413)
+        cached_body = bytes(body)
+        async def replay_body():
+            return {"type": "http.request", "body": cached_body, "more_body": False}
+        request._receive = replay_body
     return await call_next(request)
 
 class ChatIn(BaseModel): conversation_id:int=1; message:str
