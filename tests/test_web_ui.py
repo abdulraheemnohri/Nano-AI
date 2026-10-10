@@ -5,68 +5,70 @@ from nano import web
 
 def test_every_dom_id_referenced_by_the_ui_script_exists_in_the_html():
     html = web.HTML
-    referenced = set(re.findall(r"\$\('([^']+)'\)", html))
+    referenced = set(re.findall(r"\\$\\('([^']+)'\\)", web.JS))
     defined = set(re.findall(r"id='([^']+)'", html))
     missing = sorted(i for i in referenced if i not in defined)
     assert missing == [], f"UI script references missing element ids: {missing}"
 
 
+def test_ui_assets_are_separated_and_all_pages_are_present():
+    assert '<link rel="stylesheet" href="/assets/nano.css">' in web.HTML
+    assert '<script src="/assets/nano.js" defer></script>' in web.HTML
+    assert len(web.CSS) > 1000
+    for page in ("talk", "memory", "learning", "skills", "tools", "knowledge", "research", "automation", "model", "settings", "system"):
+        assert f"id='{page}' class='page" in web.HTML
+
+
 def test_model_page_wires_auto_setup_cancel_and_progress():
-    html = web.HTML
-    assert "id='cancelAutoModel'" in html
-    assert "id='autoModelProgress'" in html
-    assert "model_loaded" in html
+    assert "id='cancelAutoModel'" in web.HTML
+    assert "id='autoModelProgress'" in web.HTML
+    assert "model_loaded" in web.JS
+
 
 def test_scheduler_ui_exposes_per_job_run_timeout():
-    html = web.HTML
-    assert "id='jobTimeout'" in html
-    assert "timeout_seconds:Number($('jobTimeout').value)" in html
-    assert "timeout '+(j.timeout_seconds||300)+' sec" in html
+    assert "id='jobTimeout'" in web.HTML
+    assert "timeout_seconds:Number($('jobTimeout').value)" in web.JS
+    assert "timeout '+(j.timeout_seconds||300)+' sec" in web.JS
 
 
 def test_model_page_renders_served_and_registry_lists():
-    html = web.HTML
-    assert "id='modelLists'" in html
-    assert "async function loadModelLists()" in html
-    assert "api('/api/models/registry')" in html
-    assert "api('/api/health')" in html
-    assert "refreshAutoModel(); loadModelLists(); }" in html
+    assert "id='modelLists'" in web.HTML
+    assert "async function loadModelLists()" in web.JS
+    assert "api('/api/models/registry')" in web.JS
+    assert "api('/api/health')" in web.JS
+    assert "refreshAutoModel(); loadModelLists(); }" in web.JS
+
 
 def test_sidebar_conversation_paging_wiring():
-    html = web.HTML
-    assert "async function moreConvs()" in html
-    assert "addLoadMoreBtn" in html
-    assert "m.id='moreConvs'" in html
-    assert "api('/api/conversations?limit=200&offset='+convOffset)" in html
+    assert "async function moreConvs()" in web.JS
+    assert "addLoadMoreBtn" in web.JS
+    assert "m.id='moreConvs'" in web.JS
+    assert "api('/api/conversations?limit=200&offset='+convOffset)" in web.JS
 
 
 def test_polish_ui_wiring():
-    html = web.HTML
-    assert "id='themeToggle'" in html
-    assert "b.id='moreLearning'" in html
-    assert "b.id='moreKnowledge'" in html
-    assert "async function moreLearning()" in html
-    assert "async function moreKnowledge()" in html
-    assert "id='installUpdateDeps'" in html
-    assert "install_dependencies:$('installUpdateDeps').checked" in html
-    assert "api('/api/learning/events?limit=50&offset='+learnOffset)" in html
-    assert "api('/api/knowledge?limit=50&offset='+knowledgeOffset)" in html
+    assert "id='themeToggle'" in web.HTML
+    assert "b.id='moreLearning'" in web.JS
+    assert "b.id='moreKnowledge'" in web.JS
+    assert "async function moreLearning()" in web.JS
+    assert "async function moreKnowledge()" in web.JS
+    assert "id='installUpdateDeps'" in web.HTML
+    assert "install_dependencies:$('installUpdateDeps').checked" in web.JS
+    assert "api('/api/learning/events?limit=50&offset='+learnOffset)" in web.JS
+    assert "api('/api/knowledge?limit=50&offset='+knowledgeOffset)" in web.JS
 
 
-def test_embedded_web_javascript_parses_with_node():
+def test_standalone_web_javascript_parses_with_node():
     import shutil
     import subprocess
-
     import pytest
 
     node = shutil.which("node")
     if not node:
         pytest.skip("Node.js is not installed; JavaScript syntax check is optional locally")
-    match = re.search(r"<script>(.*?)</script>", web.HTML, flags=re.DOTALL)
-    assert match, "The web UI must include its application script"
     result = subprocess.run(
         [node, "--check", "-"],
-        input=match.group(1),
+        input=web.JS,
         text=True,
         capture_output=True,
         timeout=15,
@@ -76,14 +78,12 @@ def test_embedded_web_javascript_parses_with_node():
 
 
 def test_web_ui_keeps_core_navigation_and_system_health_controls():
-    html = web.HTML
     for expected in ("data-p='talk'", "data-p='settings'", "id='send'", "id='systemHealthSummary'", "id='refreshSystemHealth'"):
-        assert expected in html
+        assert expected in web.HTML
 
 
 def test_chat_loads_paginated_messages_with_earlier_button():
-    html = web.HTML
-    assert "async function earlierMsgs()" in html
-    assert "b.id='earlierMsgs'" in html
-    assert "api('/api/conversations/'+id+'/messages?limit='+MSG_PAGE)" in html
-    assert "api('/api/conversations/'+cid+'/messages?limit='+MSG_PAGE+'&offset='+msgOffset)" in html
+    assert "async function earlierMsgs()" in web.JS
+    assert "b.id='earlierMsgs'" in web.JS
+    assert "api('/api/conversations/'+id+'/messages?limit='+MSG_PAGE)" in web.JS
+    assert "api('/api/conversations/'+cid+'/messages?limit='+MSG_PAGE+'&offset='+msgOffset)" in web.JS
