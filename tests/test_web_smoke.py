@@ -66,3 +66,9 @@ def test_pagination_failures_are_visible_and_retryable():
     assert "Could not load more learning events:" in html
     assert "Could not load more knowledge:" in html
     assert "pagination-error" in html
+
+def test_cancelled_api_token_prompt_can_be_retried():
+    from nano import web
+
+    # Cancelling prompt() must not leave a resolved empty token cached forever.
+    assert "else{tokenPrompt=null}" in web.HTML
