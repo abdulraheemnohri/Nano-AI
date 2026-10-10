@@ -76,12 +76,21 @@ def remove_model(model_id):
     raise RuntimeError("Model deletion is intentionally not automated; use the LiteRT-LM version's documented registry management command.")
 
 def info():
-    p=default_model_path()
+    p = default_model_path()
+    registry = registry_list()
+    file_exists = os.path.isfile(p)
     return {
-        "runtime":"litert-lm","name":config.MODEL_NAME,"registry_model":config.LITERT_MODEL,
-        "local_path":p,"local_file_installed":__import__("os").path.exists(p),
-        "local_file_size":__import__("os").path.getsize(p) if __import__("os").path.exists(p) else 0,
-        "registry_models":registry_list(),"url":MODEL_URL,"repository":MODEL_REPO
+        "runtime": "litert-lm",
+        "name": config.MODEL_NAME,
+        "registry_model": config.LITERT_MODEL,
+        "storage_mode": "LiteRT-LM model registry (managed by litert-lm CLI)",
+        "registry_model_installed": _registry_has_model(registry, config.LITERT_MODEL),
+        "local_path": p,
+        "local_file_installed": file_exists,
+        "local_file_size": os.path.getsize(p) if file_exists else 0,
+        "registry_models": registry,
+        "url": MODEL_URL,
+        "repository": MODEL_REPO,
     }
 
 def sha256(path=None):
