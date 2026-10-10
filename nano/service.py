@@ -76,7 +76,7 @@ def build_user_units(nano_executable, litert_executable):
         "Restart=on-failure",
         "RestartSec=5",
         "NoNewPrivileges=true",
-        "PrivateTmp=true",
+
         "UMask=0077",
         "",
         "[Install]",
