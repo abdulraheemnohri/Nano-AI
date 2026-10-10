@@ -106,3 +106,59 @@ def test_advance_plan_requires_active_plan_and_stops_on_failed_task(engine_db):
     update_task(plan["tasks"][0]["id"], "failed", "Needs investigation")
     with pytest.raises(ValueError, match="failed, blocked, or cancelled"):
         advance_plan(plan["id"])
+
+def test_replan_creates_draft_for_only_failed_and_blocked_tasks(engine_db):
+    goal = create_goal("Finish a safe task")
+    original = create_plan(goal["id"], "Original plan", steps=["Investigate", "Implement", "Verify"])
+    update_task(original["tasks"][0]["id"], "failed", "Missing prerequisite")
+    update_task(original["tasks"][1]["id"], "blocked", "Waiting for approved access")
+    result = __import__("nano.selfx_engine", fromlist=["replan_failed_tasks"]).replan_failed_tasks(original["id"])
+    assert result["execution_started"] is False
+    assert result["replanned_task_count"] == 2
+    assert result["new_plan"]["status"] == "draft"
+    assert len(result["new_plan"]["tasks"]) == 2
+    assert all(task["status"] == "pending" for task in result["new_plan"]["tasks"])
+
+
+def test_research_comparison_reports_source_diversity_without_claiming_truth(engine_db):
+    from nano.selfx_engine import compare_research
+
+    record_research("Compare local model runtimes", "https://example.org/guide", "Runtime A supports CPU inference and local execution.")
+    record_research("Compare local model runtimes", "https://docs.python.org/guide", "Runtime B uses a different execution and packaging model.", credibility="high", confidence=0.8)
+    report = compare_research("Compare local model runtimes")
+    assert report["record_count"] == 2
+    assert report["distinct_source_count"] == 2
+    assert report["needs_independent_review"] is True
+    assert "cannot establish truth" in report["interpretation"]
+
+
+def test_task_outcome_can_create_evidence_linked_lesson(engine_db):
+    from nano.selfx_engine import learn_from_task
+
+    goal = create_goal("Learn from task evidence")
+    plan = create_plan(goal["id"], "Evidence plan", steps=["Run verification"])
+    task_id = plan["tasks"][0]["id"]
+    with pytest.raises(ValueError):
+        learn_from_task(task_id, "verification", "Pending tasks are not outcomes.")
+    update_task(task_id, "completed", "The regression suite passed.")
+    lesson = learn_from_task(task_id, "verification", "Run the regression suite before accepting this class of change.")
+    assert lesson["source"] == f"task:{task_id}"
+    assert lesson["outcome"] == "completed"
+    assert lesson["evidence"][0]["source"] == "selfx_tasks"
+    assert "regression suite passed" in lesson["evidence"][0]["note"]
+
+
+def test_lesson_can_seed_pending_skill_proposal_without_enabling_it(engine_db):
+    from nano.selfx import record_lesson
+    from nano.selfx_engine import propose_skill_from_lesson
+
+    lesson = record_lesson("testing", "Always add a regression test for this failure mode.")
+    result = propose_skill_from_lesson(
+        lesson["id"], "regression-helper", "Suggest focused regression tests.",
+        "When a reproducible bug is identified, propose a focused regression test and explain what it protects.",
+    )
+    assert result["status"] == "pending"
+    assert result["source_lesson_id"] == lesson["id"]
+    assert result["auto_enabled"] is False
+    proposal = db.rows("SELECT status FROM skill_proposals WHERE id=?", (result["proposal_id"],))[0]
+    assert proposal["status"] == "pending"
