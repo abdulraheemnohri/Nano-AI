@@ -57,11 +57,11 @@ def build_context(query):
     ) if guidance else ""
     return "\n\n".join(
         item for item in (
-            "Relevant memory:\n" + mt if mt else "",
             "Active skills:\n" + sp if sp else "",
             language_text,
             talk_guidance,
             feedback_text,
+            "Relevant memory:\n" + mt if mt else "",
         ) if item
     )
 
