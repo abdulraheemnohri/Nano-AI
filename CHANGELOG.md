@@ -9,7 +9,7 @@ Notable changes to Nano AI are documented here. Releases follow the repository's
 - Opt-in automatic dependency install during updates: `POST /api/system/update/apply` accepts `install_dependencies`; when changed dependency files are detected and the flag is set, Nano runs pip against `requirements.txt` (or an editable install) and records the outcome in the recovery manifest. Restart remains manual by design.
 - Learning events and Knowledge lists are now paginated (`limit`/`offset` query parameters; UI "Load more" buttons).
 - Theme toggle button in the sidebar (light/dark, persisted through the theme setting).
-- Disk-space guard: model imports (auto setup, custom import task, direct import) are refused with a clear message when under ~2 GB free space in the model directory.
+- Disk-space guard: model imports (auto setup, custom import task, direct import) are refused with a clear message when under 3 GiB free space in the model directory.
 - Conversation messages are paginated: `GET /api/conversations/{id}/messages` returns the newest window (default 200, max 500) in chronological order with `limit`/`offset`; the Talk UI shows a "Load earlier messages" button for long conversations.
 - Bounded `GET /api/conversations` list (`limit` query parameter, default 200, capped at 500; `offset` for paging) so the sidebar no longer loads every conversation. The Talk sidebar loads conversations in pages of 200 with a "Load more conversations" button when more exist.
 - Restore now prunes old `recovery/pre-restore-*.sqlite3` snapshots, keeping only the 10 newest, so repeated restores cannot fill the disk.
