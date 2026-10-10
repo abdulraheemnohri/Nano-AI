@@ -71,3 +71,28 @@ def test_review_cycle_records_reflection_and_does_not_execute(engine_db):
     assert result["reflection"]["task_outcomes"]["failed"] == 1
     assert result["improvement_proposal"]["status"] == "pending"
     assert db.rows("SELECT COUNT(*) AS n FROM selfx_reflections")[0]["n"] == 1
+
+
+def test_replan_creates_draft_for_only_failed_and_blocked_tasks(engine_db):
+    goal = create_goal("Finish a safe task")
+    original = create_plan(goal["id"], "Original plan", steps=["Investigate", "Implement", "Verify"])
+    update_task(original["tasks"][0]["id"], "failed", "Missing prerequisite")
+    update_task(original["tasks"][1]["id"], "blocked", "Waiting for approved access")
+    result = __import__("nano.selfx_engine", fromlist=["replan_failed_tasks"]).replan_failed_tasks(original["id"])
+    assert result["execution_started"] is False
+    assert result["replanned_task_count"] == 2
+    assert result["new_plan"]["status"] == "draft"
+    assert len(result["new_plan"]["tasks"]) == 2
+    assert all(task["status"] == "pending" for task in result["new_plan"]["tasks"])
+
+
+def test_research_comparison_reports_source_diversity_without_claiming_truth(engine_db):
+    from nano.selfx_engine import compare_research
+
+    record_research("Compare local model runtimes", "https://example.org/guide", "Runtime A supports CPU inference and local execution.")
+    record_research("Compare local model runtimes", "https://docs.python.org/guide", "Runtime B uses a different execution and packaging model.", credibility="high", confidence=0.8)
+    report = compare_research("Compare local model runtimes")
+    assert report["record_count"] == 2
+    assert report["distinct_source_count"] == 2
+    assert report["needs_independent_review"] is True
+    assert "cannot establish truth" in report["interpretation"]

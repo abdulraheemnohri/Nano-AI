@@ -30,7 +30,8 @@ from .messaging import telegram_send, webhook_send
 from .mcp import handle_message
 from .desktop import desktop_action
 from .updates import check_update, apply_update, rollback_update
-from .selfx import init_selfx_db, run_self_check, create_goal, list_goals, update_goal, record_lesson, list_lessons, reflect, propose_improvement, list_improvements, review_improvement\nfrom .selfx_engine import init_selfx_engine_db, create_plan, get_plan, list_plans, update_plan_status, update_task, record_research, list_research, run_review_cycle
+from .selfx import init_selfx_db, run_self_check, create_goal, list_goals, update_goal, record_lesson, list_lessons, reflect, propose_improvement, list_improvements, review_improvement
+from .selfx_engine import init_selfx_engine_db, create_plan, get_plan, list_plans, update_plan_status, update_task, record_research, list_research, run_review_cycle, replan_failed_tasks, compare_research
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -902,6 +903,25 @@ def selfx_research_fetch(x: SelfResearchFetchIn):
         raise HTTPException(400, str(e))
     except RuntimeError as e:
         raise HTTPException(502, str(e))
+
+
+
+@app.post("/api/self/plans/{plan_id}/replan")
+def selfx_replan(plan_id: int):
+    try:
+        return replan_failed_tasks(plan_id)
+    except KeyError as e:
+        raise HTTPException(404, str(e))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/self/research/compare")
+def selfx_research_compare(question: str, limit: int = 100):
+    try:
+        return compare_research(question, limit)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
 
 
 @app.post("/api/self/review-cycle")

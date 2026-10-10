@@ -204,3 +204,69 @@ def run_review_cycle():
             ],
         )
     return {"reflection": reflection, "quality": quality_report(), "improvement_proposal": proposal, "auto_execution": False}
+
+
+def replan_failed_tasks(plan_id):
+    """Create a new draft plan for failed/blocked tasks; never execute it."""
+    original = get_plan(plan_id)
+    if not original:
+        raise KeyError("Plan not found.")
+    retryable = [task for task in original["tasks"] if task["status"] in {"failed", "blocked"}]
+    if not retryable:
+        raise ValueError("The plan has no failed or blocked tasks to replan.")
+    steps = []
+    for task in retryable:
+        prior_result = task.get("result", "").strip()
+        description = "Reattempt from a fresh plan. Previous outcome: " + (prior_result or "No outcome recorded.")
+        steps.append({"title": "Replan: " + task["title"][:145], "description": description[:2000]})
+    replacement = create_plan(
+        original["goal_id"],
+        "Replan: " + original["title"][:145],
+        "Review failed/blocked outcomes from plan #" + str(plan_id) + " before taking action. This plan is a proposal only.",
+        steps,
+    )
+    return {
+        "source_plan_id": plan_id,
+        "new_plan": replacement,
+        "replanned_task_count": len(retryable),
+        "execution_started": False,
+    }
+
+
+def compare_research(question, limit=100):
+    """Compare saved source diversity without pretending lexical similarity proves truth."""
+    from urllib.parse import urlparse
+    question = _text(question, "question", 1000)
+    records = list_research(question=question, limit=limit)
+    domains = set()
+    assessments = {}
+    for item in records:
+        host = (urlparse(item["source_url"]).hostname or "").lower()
+        if host:
+            domains.add(host.removeprefix("www."))
+        label = item.get("credibility", "unassessed")
+        assessments[label] = assessments.get(label, 0) + 1
+    token_sets = []
+    for item in records:
+        tokens = {token.lower() for token in item.get("summary", "").split() if len(token) > 3}
+        if tokens:
+            token_sets.append(tokens)
+    lexical_overlap = None
+    if len(token_sets) >= 2:
+        scores = []
+        for i in range(len(token_sets)):
+            for j in range(i + 1, len(token_sets)):
+                union = token_sets[i] | token_sets[j]
+                scores.append(len(token_sets[i] & token_sets[j]) / len(union) if union else 1.0)
+        lexical_overlap = round(sum(scores) / len(scores), 3) if scores else None
+    return {
+        "question": question,
+        "record_count": len(records),
+        "distinct_source_domains": sorted(domains),
+        "distinct_source_count": len(domains),
+        "assessment_counts": assessments,
+        "average_lexical_overlap": lexical_overlap,
+        "needs_independent_review": len(domains) < 2 or any(item.get("credibility") in {"unassessed", "contradicted", "stale"} for item in records),
+        "interpretation": "Lexical overlap is a triage signal only. It cannot establish truth, independence, or contradiction; inspect original sources and dates.",
+        "sources": records,
+    }
