@@ -48,3 +48,22 @@ def test_supervisor_only_attempts_scheduler_recovery_when_enabled(tmp_path, monk
     assert attempts == ["restart"]
     assert any(action["action"] == "restart_scheduler_thread" for action in report["actions"])
     assert report["safety"]["arbitrary_process_restart"] is False
+
+
+def test_supervisor_reports_database_bootstrap_failure_without_crashing(tmp_path, monkeypatch):
+    _setup_db(tmp_path, monkeypatch)
+    monkeypatch.setattr(
+        "nano.supervisor._ensure_db",
+        lambda: (_ for _ in ()).throw(sqlite3.DatabaseError("database disk image is malformed")),
+    )
+
+    report = run_supervisor_cycle(force=True)
+    assert report["status"] == "error"
+    assert report["manual_repair_required"] is True
+    assert report["actions"] == []
+    assert report["safety"]["database_auto_repair"] is False
+
+    state = supervisor_status()
+    assert state["latest"]["status"] == "error"
+    assert "database_access_error" in state["latest"]
+    assert state["events"] == []
