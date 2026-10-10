@@ -1,0 +1,2 @@
+# Full developer/optional feature set. Playwright browser binaries are installed separately.
+-e .[voice,browser,desktop,test]

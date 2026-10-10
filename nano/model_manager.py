@@ -10,8 +10,8 @@ import json
 from . import config
 from .runtime import registry_models, litert_lm_binary
 
-MODEL_REPO="litert-community/Qwen3-1.7B"
-MODEL_FILE="Qwen3-1.7B_dynamic_wi4b32_afp32.litertlm"
+MODEL_REPO="litert-community/Qwen3-4B-Thinking-2507"
+MODEL_FILE="Qwen3_4b_thinking_dynamic_wi4b32_afp32.litertlm"
 MODEL_URL=f"https://huggingface.co/{MODEL_REPO}/resolve/main/{MODEL_FILE}?download=true"
 
 def default_model_path():
@@ -34,7 +34,7 @@ def validate_import_request(repo, filename, model_id=None):
     return repo, filename, target
 
 
-_IMPORT_MIN_FREE_BYTES = 2 * 1024 * 1024 * 1024
+_IMPORT_MIN_FREE_BYTES = 3 * 1024 * 1024 * 1024
 
 
 def ensure_disk_space(required_bytes=None):

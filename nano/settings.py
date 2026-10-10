@@ -18,7 +18,7 @@ DEFAULTS = {
     "speech_volume": "1.0",
     "theme": "dark",
     "temperature": "0.7",
-    "max_tokens": "1024",
+    "max_tokens": "2048",
     "max_history": "12",
     "memory_limit": "6",
     "knowledge_limit": "100",

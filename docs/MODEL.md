@@ -1,35 +1,46 @@
 # Model and LiteRT-LM Runtime
 
-Nano AI uses Qwen3 1.7B through the official LiteRT-LM CLI. It does not use GGUF or llama.cpp.
+Nano AI defaults to the official LiteRT-LM Qwen3-4B-Thinking-2507 block-32 artifact requested for this project. It does not use GGUF or llama.cpp.
 
 ## Default artifact
-- Repository: `litert-community/Qwen3-1.7B`
-- Artifact: `Qwen3-1.7B_dynamic_wi4b32_afp32.litertlm`
-- Quantization: dynamic INT4, block-32 weights / FP32 activations
-- Context: 4096
-- Size: roughly 932–977 MB depending on displayed artifact metadata
 
-Registry ID: `qwen3-1.7b`.
+- Repository: `litert-community/Qwen3-4B-Thinking-2507`
+- Artifact: `Qwen3_4b_thinking_dynamic_wi4b32_afp32.litertlm`
+- Registry ID: `qwen3-4b-thinking-2507`
+- Format: LiteRT-LM `.litertlm`, dynamic INT4 block-32 weights with FP32 activations
+- Context: 4096 tokens
+- Download size: approximately 2.1 GB; reserve at least 3 GB free disk space for import/cache.
+- Memory: this 4B reasoning model can need several GB of RAM; 8 GB or more is recommended. 6 GB machines may be memory-constrained, depending on OS, backend, and other applications.
+- Reasoning: allow enough generation tokens (typically at least 2048) or the response may stop before its final answer.
 
-## Runtime
-Nano uses `litert-lm serve` because the official server exposes OpenAI-compatible `/v1/models` and `/v1/chat/completions`. LiteRT-LM also supports direct `litert-lm run`.
+Model card and artifact: https://huggingface.co/litert-community/Qwen3-4B-Thinking-2507/blob/main/Qwen3_4b_thinking_dynamic_wi4b32_afp32.litertlm
 
-## Model management
+## Import and run
+
 ```bash
+python -m pip install -U litert-lm
+nano-ai download-model
 litert-lm list
-litert-lm import --from-huggingface-repo=litert-community/Qwen3-1.7B Qwen3-1.7B_dynamic_wi4b32_afp32.litertlm qwen3-1.7b
+nano-ai litert-lm
 ```
-Nano's `download-model` / `import-model` commands call this CLI operation.
 
-## Configuration
-`NANO_LITERT_URL`, `NANO_LITERT_MODEL`, `NANO_LITERT_TIMEOUT`, `NANO_MAX_CONTEXT`, and `NANO_MODEL_NAME` control Nano's integration. LiteRT-LM's own `config.json` remains the source of truth for backend-specific runtime settings.
+Equivalent explicit import command:
 
-## Troubleshooting model readiness
+```bash
+litert-lm import --from-huggingface-repo=litert-community/Qwen3-4B-Thinking-2507 Qwen3_4b_thinking_dynamic_wi4b32_afp32.litertlm qwen3-4b-thinking-2507
+```
 
-Nano's diagnostics distinguish three model states instead of a single "endpoint" warning:
+Nano uses `litert-lm serve` because the CLI exposes the local OpenAI-compatible `/v1/models` and `/v1/chat/completions` endpoints. Keep the service on loopback. In a second terminal run `nano-ai web`, then open http://127.0.0.1:8000.
 
-- **Endpoint not reachable:** the LiteRT-LM server is not running, or `NANO_LITERT_URL` is wrong. Start it with `nano-ai litert-lm` and confirm with `nano-ai status`.
-- **Endpoint reachable, but the configured model is not served:** the server is up, yet the model ID from `NANO_LITERT_MODEL` does not appear in `GET /v1/models` (or the registry is empty). Import it with `nano-ai download-model`, or point `NANO_LITERT_MODEL` at an already-served model.
-- **Endpoint reachable and model served:** chat is ready.
+## Model management and configuration
 
-`nano-ai doctor` and the System health page report the exact state, the served-model list, and the endpoint error (such as "Connection refused" or an HTTP status) when one is available. `nano-ai litert-lm` refuses to start a second server when the endpoint already answers, and prints the port-inspection command when another service occupies the port.
+`nano-ai download-model` imports the default artifact. For an alternate model, pass `--repo OWNER/REPO --file artifact.litertlm --id registry-id`. Use only repository and artifact names verified on Hugging Face and supported by your installed LiteRT-LM version.
+
+`NANO_LITERT_URL`, `NANO_LITERT_MODEL`, `NANO_LITERT_TIMEOUT`, `NANO_MAX_CONTEXT`, and `NANO_MODEL_NAME` control Nano's integration. LiteRT-LM's own model metadata remains the source of truth for backend-specific runtime settings.
+
+## Troubleshooting
+
+- Endpoint unreachable: start `nano-ai litert-lm` and check `nano-ai status`.
+- Model ID not served: run `litert-lm list`; set `NANO_LITERT_MODEL` to the exact ID shown by `/v1/models`.
+- Out of memory: close other applications, use a machine with more RAM, or explicitly import a smaller supported LiteRT-LM model.
+- Slow first response: the model is a reasoning model and may spend tokens thinking before answering.

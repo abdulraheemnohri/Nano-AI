@@ -17,7 +17,7 @@ Nano AI now includes a local-first, policy-bounded Self-X foundation. It tracks 
 
 These endpoints do not automatically execute plans, generated code, or proposals; change permissions; bypass approvals; or modify model weights. Web pages are untrusted evidence and should be independently cross-checked. Research fetch is an explicit user-initiated operation.
 
-Nano AI is a lightweight, privacy-first local talking assistant built around Qwen3 1.7B and the LiteRT-LM CLI. It includes persistent learning, reusable prompt skills, optional offline voice, and a bounded local tool registry.
+Nano AI is a lightweight, privacy-first local talking assistant built around Qwen3 4B-Thinking-2507 and the LiteRT-LM CLI. It includes persistent learning, reusable prompt skills, optional offline voice, and a bounded local tool registry.
 
 ## Self-X (self-management foundation)
 
@@ -47,7 +47,7 @@ Goal states are `planned`, `active`, `blocked`, `completed`, and `cancelled`; pr
 
 Nano uses the official LiteRT-LM CLI as its inference runtime. LiteRT-LM provides an OpenAI-compatible local server on port 9379, so Nano sends chat requests to `/v1/chat/completions`.
 
-Selected Qwen3 1.7B artifact: `Qwen3-1.7B_dynamic_wi4b32_afp32.litertlm`, about 932 MB, 4096-token context variant.
+Selected Qwen3 4B-Thinking-2507 artifact: `Qwen3_4b_thinking_dynamic_wi4b32_afp32.litertlm`, about 932 MB, 4096-token context variant.
 
 ## Linux / macOS
 
@@ -106,13 +106,13 @@ Then open another PowerShell window, activate the environment and run `nano-ai w
 
 Nano's `download-model` command calls the LiteRT-LM CLI import operation:
 
-    litert-lm import --from-huggingface-repo=litert-community/Qwen3-1.7B Qwen3-1.7B_dynamic_wi4b32_afp32.litertlm qwen3-1.7b
+    litert-lm import --from-huggingface-repo=litert-community/Qwen3-4B-Thinking-2507 Qwen3_4b_thinking_dynamic_wi4b32_afp32.litertlm qwen3-4b-thinking-2507
 
 Then the CLI server loads the local registry:
 
     litert-lm serve --host 127.0.0.1 --port 9379
 
-Default model ID: `qwen3-1.7b`.
+Default model ID: `qwen3-4b-thinking-2507`.
 
 ## Built-in tools
 
@@ -131,7 +131,7 @@ Built-in tools remain local and allowlisted. Optional restricted terminal and Pl
 
 ## Automatic model setup
 
-Open the Model page and choose **Auto setup / download default model**. Nano checks whether the LiteRT-LM CLI is installed and whether the configured Qwen3 1.7B model is listed in the registry. If it is missing, Nano runs the project's configured LiteRT-LM import operation in a background task and exposes status at `GET /api/models/auto-setup`. Starting setup is an explicit user action because the model may require about 1 GB of storage and bandwidth. The setup process does not silently download models on application startup. The Model page also provides a custom import form for a user-supplied Hugging Face repository, exact artifact filename, and local model ID; use artifact names supported by your installed LiteRT-LM release. For API clients, `POST /api/models/import-task` queues a validated custom import without holding the request open; poll `GET /api/models/auto-setup` for `queued`, `running`, `complete`, or `error` state. Only one model setup/import task can run at a time.
+Open the Model page and choose **Auto setup / download default model**. Nano checks whether the LiteRT-LM CLI is installed and whether the configured Qwen3 4B-Thinking-2507 model is listed in the registry. If it is missing, Nano runs the project's configured LiteRT-LM import operation in a background task and exposes status at `GET /api/models/auto-setup`. Starting setup is an explicit user action because the model may require about 1 GB of storage and bandwidth. The setup process does not silently download models on application startup. The Model page also provides a custom import form for a user-supplied Hugging Face repository, exact artifact filename, and local model ID; use artifact names supported by your installed LiteRT-LM release. For API clients, `POST /api/models/import-task` queues a validated custom import without holding the request open; poll `GET /api/models/auto-setup` for `queued`, `running`, `complete`, or `error` state. Only one model setup/import task can run at a time.
 
 The Model page also renders two separate model lists: **served models** reported by the running LiteRT-LM endpoint (`/v1/models`) and **registry models** reported by the local `litert-lm list` command, with the configured model highlighted. Readiness is tri-state: the endpoint can be unreachable, reachable but not serving the configured model, or serving it. `GET /api/health` and `GET /api/ready` use the same classifier, and `/api/ready` returns 503 with an actionable detail message when the configured model is not served.
 
@@ -194,9 +194,9 @@ GitHub Actions runs the test suite on pushes to `main`, pull requests targeting 
 
 Open **Web Research**, search the web, then choose a result to read and save to Nano's local knowledge database. You can also paste a public HTTPS page URL. Nano limits page size and supported content types, blocks local/private network targets, and extracts readable text without executing page JavaScript. Research endpoints are `POST /api/research/search` and `POST /api/research/learn`. Web content is untrusted reference material; it is not run as code or treated as system instructions. Searching and fetching pages require an internet connection; saved knowledge remains in Nano's local database.
 
-## Voice
+## Voice and browser setup
 
-Install voice support with `pip install -r requirements-voice.txt`. Voice flow is: Microphone -> local WAV -> Vosk STT -> Qwen3 1.7B through LiteRT-LM -> Piper TTS -> speaker.
+Install optional offline voice assets and Playwright Chromium automatically with `nano-ai setup-extras` (run from the project's virtual environment). It installs optional dependencies and downloads the default English Vosk and Piper voice files into `models/`. See [docs/INSTALL.md](docs/INSTALL.md) for Linux, macOS, Windows, wheel-transfer, autostart, and troubleshooting instructions. Voice flow: Microphone -> local WAV -> Vosk STT -> Qwen3 4B-Thinking-2507 through LiteRT-LM -> Piper TTS -> speaker.
 
 No browser SpeechRecognition or cloud audio processing is required.
 
@@ -220,7 +220,7 @@ Talk supports searching conversations by message text (`GET /api/conversations/s
 
 ## Configuration
 
-`NANO_LITERT_URL` defaults to `http://127.0.0.1:9379`. `NANO_LITERT_MODEL` defaults to `qwen3-1.7b`. Other settings include `NANO_MODEL_NAME`, `NANO_MAX_CONTEXT`, `NANO_TEMPERATURE`, `NANO_LEARNING_ENABLED`, `NANO_STT_MODEL`, `NANO_PIPER_COMMAND` and `NANO_PIPER_VOICE`. Tool enablement is persisted in the local settings database.
+`NANO_LITERT_URL` defaults to `http://127.0.0.1:9379`. `NANO_LITERT_MODEL` defaults to `qwen3-4b-thinking-2507`. Other settings include `NANO_MODEL_NAME`, `NANO_MAX_CONTEXT`, `NANO_TEMPERATURE`, `NANO_LEARNING_ENABLED`, `NANO_STT_MODEL`, `NANO_PIPER_COMMAND` and `NANO_PIPER_VOICE`. Tool enablement is persisted in the local settings database.
 
 ## Database backup
 
