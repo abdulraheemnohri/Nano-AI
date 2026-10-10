@@ -1,0 +1,4 @@
+# Core Nano AI package plus every declared optional extra.
+# This may be difficult to install on some OS/hardware combinations; use only
+# the feature-specific requirements file when you do not need every feature.
+-e .[voice,browser,desktop,test]
