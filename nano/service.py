@@ -56,7 +56,6 @@ def build_user_units(nano_executable, litert_executable):
         "Restart=on-failure",
         "RestartSec=5",
         "NoNewPrivileges=true",
-        "PrivateTmp=true",
         "UMask=0077",
         "",
         "[Install]",
@@ -77,7 +76,7 @@ def build_user_units(nano_executable, litert_executable):
         "Restart=on-failure",
         "RestartSec=5",
         "NoNewPrivileges=true",
-        "PrivateTmp=true",
+
         "UMask=0077",
         "",
         "[Install]",
@@ -105,6 +104,22 @@ def install_user_services():
         path.write_text(content, encoding="utf-8")
         path.chmod(0o600)
     subprocess.run([manager, "--user", "daemon-reload"], check=True)
+    # Validate what the user manager actually loaded before enabling either unit.
+    # This catches user-manager-only directives such as PrivateTmp= that can
+    # make an otherwise plausible service file enter the bad-setting state.
+    for name in units:
+        result = subprocess.run(
+            [manager, "--user", "show", "--property=LoadState", "--value", name],
+            check=False, capture_output=True, text=True,
+        )
+        state = result.stdout.strip()
+        if result.returncode != 0 or state != "loaded":
+            detail = (result.stderr or result.stdout or "").strip()
+            raise RuntimeError(
+                f"systemd did not load {name} correctly (LoadState={state or 'unknown'}). "
+                f"Inspect with: systemctl --user status {name}; "
+                f"systemd-analyze --user verify {unit_dir / name}. {detail}"
+            )
     subprocess.run([manager, "--user", "enable", "--now", "nano-ai-litert-lm.service", "nano-ai.service"], check=True)
     return {"ok": True, "unit_dir": str(unit_dir), "services": list(units), "startup": "user login; enable systemd lingering separately for boot-before-login"}
 

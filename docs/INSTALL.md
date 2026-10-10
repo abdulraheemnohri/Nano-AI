@@ -153,6 +153,30 @@ python -m pytest -q
 - Browser not ready: run `python -m playwright install chromium` and review `NANO_BROWSER_ALLOWED_HOSTS`.
 - Keep `NANO_HOST=127.0.0.1`; set a strong `NANO_API_TOKEN`, TLS, and firewall rules before remote access.
 
+
+
+### systemd says `bad-setting` for `nano-ai.service`
+
+Upgrade Nano AI to a revision containing the systemd user-unit compatibility fix, activate the same virtual environment used for installation, then reinstall the units:
+
+```bash
+source .venv/bin/activate
+python -m pip install -e .
+nano-ai install-user-service
+systemctl --user daemon-reload
+systemctl --user status nano-ai-litert-lm.service nano-ai.service
+journalctl --user -u nano-ai.service -n 100 --no-pager
+```
+
+If it still fails, collect the exact parser diagnostic before changing settings:
+
+```systemd-analyze --user verify ~/.config/systemd/user/nano-ai.service ~/.config/systemd/user/nano-ai-litert-lm.service
+systemctl --user show nano-ai.service -p LoadState -p FragmentPath
+systemctl --user cat nano-ai.service
+```
+
+The installer now validates that the user manager loaded each unit before enabling it. The unit files intentionally avoid `PrivateTmp=`, which is not supported in some user-manager configurations and can result in `bad-setting`.
+
 ## 11. Local data and offline mode
 
 The SQLite database defaults to `data/nano.sqlite3`; models live under `models/`. Back up this data because it contains conversation history, memories, and imported knowledge. After setup, chat and speech processing are local; browser research, Hugging Face downloads, messaging webhooks, and other internet integrations naturally require network access.
