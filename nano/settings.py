@@ -6,6 +6,7 @@ DEFAULTS = {
     "voice_enabled": "true",
     "learning_enabled": "true",
     "auto_tts": "true",
+    "auto_download_model": "true",
     "autonomous_talk_enabled": "false",
     "autonomous_talk_interval_minutes": "60",
     "autonomous_talk_prompt": "Offer one brief, useful check-in based on my saved preferences. Ask a question only if it helps. Do not claim you performed background work.",
@@ -30,7 +31,7 @@ DEFAULTS = {
     "tool_enabled_knowledge_search": "true",
 }
 
-BOOL_KEYS = {key for key in DEFAULTS if key.startswith("tool_enabled_")} | {"voice_enabled", "learning_enabled", "auto_tts", "autonomous_talk_enabled", "background_self_check_enabled", "auto_error_resolver_enabled"}
+BOOL_KEYS = {key for key in DEFAULTS if key.startswith("tool_enabled_")} | {"voice_enabled", "learning_enabled", "auto_tts", "auto_download_model", "autonomous_talk_enabled", "background_self_check_enabled", "auto_error_resolver_enabled"}
 INT_KEYS = {"max_tokens", "max_history", "memory_limit", "knowledge_limit", "autonomous_talk_interval_minutes", "background_interval_minutes", "talk_reply_length"}
 
 
@@ -130,6 +131,7 @@ DESCRIPTIONS = {
     "voice_enabled": "Enable local Vosk speech recognition and Piper text-to-speech endpoints.",
     "learning_enabled": "Allow explicit conversation-derived memory/learning events to be recorded.",
     "auto_tts": "Automatically play local Piper speech after assistant replies.",
+    "auto_download_model": "On application startup, automatically import the configured default LiteRT-LM model if it is missing. Requires internet and at least 3 GB free disk space; the model is about 2.1 GB.",
     "theme": "Web interface color theme.",
     "temperature": "Model response randomness, from 0 (more deterministic) to 2.",
     "max_tokens": "Maximum generated tokens per model response.",

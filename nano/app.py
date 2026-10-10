@@ -42,6 +42,13 @@ async def lifespan(app: FastAPI):
     init_selfx_db()
     init_selfx_engine_db()
     seed()
+    # First-run model setup is opt-out. It runs in a background thread and never
+    # blocks app startup; disk/runtime errors are exposed through the Model page.
+    if bool_value("auto_download_model", True):
+        try:
+            start_auto_setup()
+        except Exception as exc:
+            print(f"Nano AI automatic model setup was not started: {exc}")
     start_scheduler()
     start_supervisor()
     try:
