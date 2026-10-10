@@ -34,6 +34,16 @@ def build_context(query):
     preferences = public()
     language = str(preferences.get("language", "auto")).strip()
     language_text = "Preferred response language: " + language + ". Respond in that language unless the user requests another." if language and language.lower() != "auto" else ""
+    talk_style = str(preferences.get("talk_style", "balanced"))
+    reply_words = int_value("talk_reply_length", 160)
+    style_guidance = {
+        "concise": "Prefer concise, direct answers and avoid repetition.",
+        "balanced": "Balance clarity and useful detail.",
+        "detailed": "Explain steps and important context when useful.",
+        "warm": "Use a warm, natural, conversational tone without being overly familiar.",
+        "technical": "Use precise technical language and structured troubleshooting where appropriate.",
+    }.get(talk_style, "Balance clarity and useful detail.")
+    talk_guidance = f"Speaking style: {style_guidance} Target about {reply_words} words or fewer for ordinary answers, unless the user requests more detail."
     feedback = feedback_examples(5)
     guidance = []
     for item in feedback:
@@ -50,6 +60,7 @@ def build_context(query):
             "Relevant memory:\n" + mt if mt else "",
             "Active skills:\n" + sp if sp else "",
             language_text,
+            talk_guidance,
             feedback_text,
         ) if item
     )
