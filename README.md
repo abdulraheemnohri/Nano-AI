@@ -2,6 +2,17 @@
 
 Nano AI is a lightweight, privacy-first local talking assistant built around Qwen3 1.7B and the LiteRT-LM CLI. It includes persistent learning, reusable prompt skills, optional offline voice, and a bounded local tool registry.
 
+## Self-X (self-management foundation)
+
+Nano AI includes a policy-bounded Self-X foundation for recording goals, lessons, and reflections, plus a read-only self-check. These APIs help the assistant track improvement without claiming to retrain its model or perform unapproved actions.
+
+- `GET /api/self/status` and `POST /api/self/check` — read-only diagnostic snapshot and recommendations.
+- `GET /api/self/goals`, `POST /api/self/goals`, `PATCH /api/self/goals/{id}` — persistent prioritized goals and status tracking.
+- `GET /api/self/lessons`, `POST /api/self/lessons` — lessons with source, outcome, confidence, and bounded evidence provenance.
+- `POST /api/self/reflections` — record a bounded reflection summary and findings.
+
+Goal states are `planned`, `active`, `blocked`, `completed`, and `cancelled`; priorities range from 1 (highest) to 5. Self-check is read-only and does not execute recommendations. These endpoints do not change permissions, bypass approval, execute generated code, or modify model weights. Internet research remains evidence to validate, not trusted instructions.
+
 ## Runtime
 
 Nano uses the official LiteRT-LM CLI as its inference runtime. LiteRT-LM provides an OpenAI-compatible local server on port 9379, so Nano sends chat requests to `/v1/chat/completions`.
