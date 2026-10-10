@@ -1,0 +1,2 @@
+# Core Nano AI package plus optional Playwright browser automation dependencies.
+-e .[browser]
