@@ -34,12 +34,18 @@ def _ensure_db():
 
 
 def _event(severity, category, summary, details=None):
-    _ensure_db()
-    with connect() as conn:
-        conn.execute(
-            "INSERT INTO supervisor_events(severity,category,summary,details) VALUES(?,?,?,?)",
-            (severity, category, str(summary)[:500], json.dumps(details or {}, ensure_ascii=False)[:4000]),
-        )
+    """Persist an event when possible; logging must never hide the health failure."""
+    try:
+        _ensure_db()
+        with connect() as conn:
+            conn.execute(
+                "INSERT INTO supervisor_events(severity,category,summary,details) VALUES(?,?,?,?)",
+                (severity, category, str(summary)[:500], json.dumps(details or {}, ensure_ascii=False)[:4000]),
+            )
+        return True
+    except Exception:
+        # The current health report remains the diagnostic source if SQLite is unavailable.
+        return False
 
 
 def run_supervisor_cycle(force=False):
