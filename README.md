@@ -262,3 +262,22 @@ The Memory page can scan for exact duplicates and highly similar active memories
 ## Scheduler retries and recovery
 
 Recurring assistant-prompt jobs support a bounded retry policy with exponential backoff. Configure the maximum attempts and base retry delay when creating a job. The Automation & Agents page shows the last error and provides a manual Retry now action. Startup marks unfinished runs as interrupted and schedules a retry when attempts remain. Each job also has a hard per-job run timeout (`timeout_seconds`, default 300 seconds, range 5-86400). The model request runs in a worker thread; if it exceeds the timeout, the attempt is recorded as a `JobTimeoutError` and the bounded retry policy applies. Configure it when creating a job or through `POST /api/scheduler/jobs`. This scheduler is an in-process, single-worker feature, not a distributed task queue. See docs/A_TO_Z_AUDIT.md for the complete feature inventory and limitations.
+
+
+## Background supervisor, automatic recovery, and Linux startup
+
+Nano's background supervisor runs bounded local health checks while the Nano process is running. It records check results and can restart Nano's own scheduler thread if that thread stops, when `auto_error_resolver_enabled` is enabled. It does not rewrite source code, modify permissions, repair/delete database contents, restart arbitrary system processes, or auto-approve generated fixes. Model-server failures and database-integrity problems are diagnosed and reported for review.
+
+Settings:
+- `background_self_check_enabled`: enable periodic diagnostics (default on).
+- `background_interval_minutes`: interval from 1 to 1440 minutes (default 15).
+- `auto_error_resolver_enabled`: permit bounded recovery of Nano's own scheduler worker (default on).
+- `talk_style`: concise, balanced, detailed, warm, or technical.
+- `talk_reply_length`: approximate word target for ordinary replies; direct user requests for more detail take priority.
+- `speech_rate` and `speech_volume`: local browser playback tuning for Piper audio.
+
+Inspect the supervisor at `GET /api/self/supervisor` or run a manual check with `POST /api/self/supervisor/run`. Background jobs run only while Nano's service process is alive.
+
+### Linux boot service (systemd user services)
+
+After installing Nano and LiteRT-LM, run `nano-ai install-user-service` to create and enable user-level systemd units for the local LiteRT-LM server and Nano web app. This is an explicit installation step; it does not run silently during package installation. Check them with `systemctl --user status nano-ai.service nano-ai-litert-lm.service`, logs with `journalctl --user -u nano-ai.service -f`, and disable them with `nano-ai uninstall-user-service`. User services start at login. For boot-before-login startup, an administrator may enable user lingering with `sudo loginctl enable-linger $USER`; this system-level choice is intentionally not made automatically. Linux/systemd only; Windows and macOS continue to use normal CLI startup.
