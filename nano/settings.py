@@ -158,7 +158,7 @@ DESCRIPTIONS = {
 def schema():
     result = []
     for key, default in DEFAULTS.items():
-        kind = "boolean" if key in BOOL_KEYS else "number" if key in INT_KEYS or key == "temperature" else "choice" if key == "theme" else "text"
+        kind = "boolean" if key in BOOL_KEYS else "number" if key in INT_KEYS or key in {"temperature", "speech_rate", "speech_volume"} else "choice" if key in {"theme", "talk_style"} else "text"
         item = {"key": key, "default": default, "description": DESCRIPTIONS.get(key, "Nano AI setting."), "type": kind}
         if key == "talk_style":
             item["choices"] = ["concise", "balanced", "detailed", "warm", "technical"]
