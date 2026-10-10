@@ -15,7 +15,7 @@ _stop = threading.Event()
 _last_cycle = None
 _last_report = {"status": "not_run", "checks": [], "actions": []}
 _MIN_RESTART_INTERVAL = 300
-_last_scheduler_restart = 0.0
+_last_scheduler_restart = None
 
 
 def _ensure_db():
@@ -81,7 +81,7 @@ def run_supervisor_cycle(force=False):
         checks.append({"name": "scheduler_worker", "status": "ok" if alive else "warning", "alive": alive})
         if not alive and bool_value("auto_error_resolver_enabled", True):
             now = time.monotonic()
-            if now - _last_scheduler_restart >= _MIN_RESTART_INTERVAL:
+            if _last_scheduler_restart is None or now - _last_scheduler_restart >= _MIN_RESTART_INTERVAL:
                 scheduler.start_scheduler()
                 _last_scheduler_restart = now
                 actions.append({"action": "restart_scheduler_thread", "status": "attempted", "scope": "Nano-owned worker only"})
