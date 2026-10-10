@@ -225,7 +225,7 @@ def _auto_setup_worker():
                 _AUTO_STATE.update(status="complete", message="Configured model already appears in the LiteRT-LM registry.", model_id=config.LITERT_MODEL, progress=100, phase="complete")
             return
         with _AUTO_LOCK:
-            _AUTO_STATE.update(status="running", message="Importing the default Qwen3 1.7B model. This may take a while and use about 1 GB of storage and network data.", model_id=config.LITERT_MODEL)
+            _AUTO_STATE.update(status="running", message="Importing the default Qwen3 4B-Thinking-2507 model (about 2.1 GB). Ensure at least 3 GB free disk space and enough RAM; the 4B reasoning model may take several GB of memory.", model_id=config.LITERT_MODEL)
         if _CANCEL_EVENT.is_set(): raise RuntimeError("Model import cancelled by user.")
         imported = _tracked_import(MODEL_REPO, MODEL_FILE, config.LITERT_MODEL)
         with _AUTO_LOCK:
