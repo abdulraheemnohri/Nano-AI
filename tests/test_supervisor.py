@@ -41,7 +41,7 @@ def test_supervisor_only_attempts_scheduler_recovery_when_enabled(tmp_path, monk
     monkeypatch.setattr("nano.runtime.status", lambda: {"reachable": False})
     attempts = []
     monkeypatch.setattr(scheduler, "start_scheduler", lambda: attempts.append("restart"))
-    monkeypatch.setattr("nano.supervisor._last_scheduler_restart", 0.0)
+    monkeypatch.setattr("nano.supervisor._last_scheduler_restart", None)
     from nano.settings import set_value
     set_value("auto_error_resolver_enabled", "true")
     report = run_supervisor_cycle(force=True)
