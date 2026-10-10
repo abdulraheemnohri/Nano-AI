@@ -14,9 +14,22 @@ def initialize():
     init_db()
 
 
+MAX_MEMORY_CONTEXT_CHARS = 12_000
+
 def build_context(query):
     ms = search_memory(query, int_value("memory_limit", 6))
-    mt = "\n".join("- " + m["content"] for m in ms)
+    memory_lines = []
+    remaining = MAX_MEMORY_CONTEXT_CHARS
+    for memory in ms:
+        if remaining <= 0:
+            break
+        content = str(memory.get("content", "")).strip()
+        if not content:
+            continue
+        line = "- " + content[:remaining]
+        memory_lines.append(line)
+        remaining -= len(line)
+    mt = "\n".join(memory_lines)
     sp = active_prompts()
     preferences = public()
     language = str(preferences.get("language", "auto")).strip()
