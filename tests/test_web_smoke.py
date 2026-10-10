@@ -72,3 +72,10 @@ def test_cancelled_api_token_prompt_can_be_retried():
 
     # Cancelling prompt() must not leave a resolved empty token cached forever.
     assert "else{tokenPrompt=null}" in web.HTML
+
+def test_conversation_startup_failure_is_visible_and_retryable():
+    from nano import web
+
+    assert "Could not load conversations:" in web.HTML
+    assert "retry.onclick=loadConvs" in web.HTML
+    assert "startup-error" in web.HTML
