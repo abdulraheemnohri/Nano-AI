@@ -120,7 +120,7 @@ def test_model_readiness_matches_model_ids_case_insensitively():
     result = runtime.model_readiness({
         "reachable": True, "binary": True,
         "configured_url": "http://127.0.0.1:9379",
-        "model": "Qwen3-1.7B", "models": ["qwen3-4b-thinking-2507"],
+        "model": "Qwen3-4B-Thinking-2507", "models": ["qwen3-4b-thinking-2507"],
     })
     assert result["status"] == "ok"
     assert result["model_loaded"] is True
