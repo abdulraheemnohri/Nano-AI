@@ -81,10 +81,9 @@ async def protect_api(request: Request, call_next):
             body.extend(chunk)
             if len(body) > limit:
                 return JSONResponse({"detail": "Request body exceeds configured size limit for this endpoint."}, status_code=413)
-        cached_body = bytes(body)
-        async def replay_body():
-            return {"type": "http.request", "body": cached_body, "more_body": False}
-        request._receive = replay_body
+        # Starlette's request parser checks this cache before reading the
+        # already-consumed stream again.
+        request._body = bytes(body)
     return await call_next(request)
 
 class ChatIn(BaseModel): conversation_id:int=1; message:str
