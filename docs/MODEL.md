@@ -15,6 +15,10 @@ Nano AI defaults to the official LiteRT-LM Qwen3-4B-Thinking-2507 block-32 artif
 
 Model card and artifact: https://huggingface.co/litert-community/Qwen3-4B-Thinking-2507/blob/main/Qwen3_4b_thinking_dynamic_wi4b32_afp32.litertlm
 
+## Backend compatibility note
+
+The published manifest identifies the block-32 artifact as CPU-safe by default and documents output corruption/degeneration on some GPU backends, including macOS Metal. Keep the default CPU backend on macOS for this exact artifact unless you independently verify correct output on your device. Backend support and performance vary by LiteRT-LM version and hardware.
+
 ## Import and run
 
 ```bash
