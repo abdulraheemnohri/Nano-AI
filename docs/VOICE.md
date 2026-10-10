@@ -4,7 +4,7 @@ Nano AI voice is local/offline: Microphone -> mono 16-bit WAV -> Vosk STT -> Qwe
 
 ## Install
 
-`python -m pip install -r requirements-voice.txt` followed by `python -m playwright install chromium` for browser automation. To download default English voice models and browser assets automatically, run `nano-ai setup-extras`. The Qwen3 4B model is about 2.1 GB and can require several GB RAM.
+`python -m pip install -r requirements-voice.txt` followed by `python -m playwright install chromium` for browser automation. To download default English voice models and browser assets automatically, run `nano-ai setup-extras`. The Qwen3 4B model is about 2.1 GB and can require several GB RAM. followed by `python -m playwright install chromium` for browser automation. To download default English voice models and browser assets automatically, run `nano-ai setup-extras`. The Qwen3 4B model is about 2.1 GB and can require several GB RAM.
 
 ## Vosk
 
