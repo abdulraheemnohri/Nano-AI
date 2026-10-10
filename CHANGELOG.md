@@ -5,6 +5,9 @@ Notable changes to Nano AI are documented here. Releases follow the repository's
 ## 0.5.x - 2026-10
 
 ### Added
+- Default model set to the requested Qwen3-4B-Thinking-2507 block-32 LiteRT-LM artifact; model setup warns about its ~2.1 GB download, 3 GiB free-space requirement, and reasoning-token budget.
+- Added opt-in `nano-ai setup-extras` for local English Vosk/Piper voice assets and Playwright Chromium; no voice/browser downloads happen silently at startup.
+- Expanded Linux/macOS/Windows installation and Linux systemd startup guides, plus a dated A-to-Z model/install recheck.
 - Memory search is paginated: `GET /api/memories` accepts a bounded `limit` (default 50, hard cap 500) and a non-negative `offset`; the Memory page loads 50 memories at a time with a "Load more memories" button.
 - Opt-in automatic dependency install during updates: `POST /api/system/update/apply` accepts `install_dependencies`; when changed dependency files are detected and the flag is set, Nano runs pip against `requirements.txt` (or an editable install) and records the outcome in the recovery manifest. Restart remains manual by design.
 - Learning events and Knowledge lists are now paginated (`limit`/`offset` query parameters; UI "Load more" buttons).
