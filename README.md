@@ -34,6 +34,9 @@ Nano AI includes a policy-bounded Self-X foundation for recording goals, lessons
 - `POST /api/self/research/fetch` — fetch a public HTTPS page using the existing SSRF-hardened research client, index it in local knowledge, and save its source provenance as unassessed evidence. Cross-check before relying on it.
 - `POST /api/self/review-cycle` — summarize local task outcomes and explicit answer feedback, record a reflection, and create a pending improvement proposal when signals warrant review. It does not execute proposals.
 - `POST /api/self/plans/{id}/replan` — build a new draft plan from failed/blocked tasks; it never executes the replacement plan.
+- `GET /api/self/research/compare?question=...` — summarize saved source-domain diversity and assessment labels; text overlap is only a triage signal.
+- `POST /api/self/tasks/{id}/learn` — record a caller-written lesson only after a completed, failed, or blocked task, with outcome provenance.
+- `POST /api/self/lessons/{id}/skill-proposal` — create a pending skill proposal from a lesson; explicit approval is still required before activation.
 - `GET /api/self/research/compare?question=...` — summarize saved source diversity and assessment labels. Lexical overlap is only a triage signal and does not establish truth or contradiction.
 - `GET /api/self/improvements`, `POST /api/self/improvements`, `PATCH /api/self/improvements/{id}` — store improvement proposals with evidence and explicitly review them as approved or rejected. Review does not apply code or change permissions.
 
