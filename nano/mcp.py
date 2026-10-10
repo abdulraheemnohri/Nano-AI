@@ -10,7 +10,7 @@ def handle_message(message):
     method=message["method"]
     if method=="initialize":
         result={"protocolVersion":message.get("params",{}).get("protocolVersion","2024-11-05"),
-                "capabilities":{"tools":{}},"serverInfo":{"name":"nano-ai","version":"0.6.0"}}
+                "capabilities":{"tools":{}},"serverInfo":{"name":"nano-ai","version":"0.5.0"}}
     elif method=="notifications/initialized":
         return None
     elif method=="ping": result={}
